@@ -205,3 +205,19 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+# Datasets
+*.csv
+
+# Used Datasets
+
+# Give me some credit
+!cs-test_clean.csv
+!cs-test.csv
+!cs-training_clean.csv
+!cs-training.csv
+
+# Heart Failure
+!heart_failure_clinical_records_dataset_baseline.csv
+!heart_failure_clinical_records_dataset_leakage.csv
