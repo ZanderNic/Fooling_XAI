@@ -1,6 +1,7 @@
 from data_poisoning import *
 
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 import pickle
@@ -14,6 +15,10 @@ df = pd.read_csv(DATA_PATH, header=0)
 
 X = df.drop("Outcome", axis=1)
 y = df["Outcome"]
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+X = pd.DataFrame(X_scaled, columns=X.columns)
 
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.1, random_state=42
@@ -42,17 +47,17 @@ cat_mask = [False] * X_train.shape[1]
 X_cat = [None] * X_train.shape[1]
 
 # hyperparameters
-N_POP = 25
+N_POP = 20
 N_GEN = 40
-N_SAMPLE = 4
+N_SAMPLE = 5
 
 INIT_MUTATION_RATE = 1.0  # for full std evaluation
-INIT_STD = 0.2
+INIT_STD = 0.4
 
-P_ELITE = 0.04
+P_ELITE = 0.05
 P_COMBINE = 0.1
 
-DRIFT_THRESHOLD = 0.3
+DRIFT_THRESHOLD = 0.1
 DRIFT_CONFIDENCE = 0.95
 
 EARLY_STOPPING_PATIENCE = 5
@@ -108,7 +113,6 @@ pickle.dump(
         "logging": logging,
         "X_train": X_train,
         "y_train": y_train,
-        "feature_labels": df.columns[:-1].tolist(),
         "model": model,
     },
     open(f"./evolution_results_{N_POP}p_{N_SAMPLE}s_{N_GEN}g_{DRIFT_THRESHOLD}dt_{DRIFT_CONFIDENCE}dc.pkl", "wb")

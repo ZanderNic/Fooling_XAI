@@ -79,15 +79,17 @@ def kendall_tau_distance(
     Parameters
     ----------
     vec1 (np.ndarray):
-        A 3D numpy array representing the first vector of explanation importance values.
+        A 3D numpy array of shape (n_population, n_samples, n_features) holding the 
+        first vectors of explanation importance values with shape (n_features,).
 
     vec2 (np.ndarray):
-        A 3D numpy array representing the second vector of explanation importance values.
+        A 3D numpy array of shape (n_population, n_samples, n_features) holding the
+        second vectors of explanation importance values with shape (n_features,).
 
     Returns
     -------
     float:
-        The computed Kendall Tau distance between the two vectors.
+        The normalized Kendall Tau distance between the two vectors.
     """
     assert isinstance(vec1, np.ndarray)
     assert isinstance(vec2, np.ndarray)
