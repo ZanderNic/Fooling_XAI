@@ -8,7 +8,7 @@ import numpy as np
 import shap
 
 # projekt imports
-from .base_explainer import BaseExplainer, Explanation
+from xai_bench.explainer.base_explainer import BaseExplainer
 
 class ShapAdapter(BaseExplainer):
     def __init__(self, nsamples: int = 2000, background_size: int = 200, random_state: int = 42):

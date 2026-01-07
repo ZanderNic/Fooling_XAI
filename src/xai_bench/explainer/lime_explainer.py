@@ -8,7 +8,7 @@ import numpy as np
 import lime.lime_tabular 
 
 # projekt imports
-from .base_explainer import BaseExplainer, Explanation
+from xai_bench.explainer.base_explainer import BaseExplainer
 
 
 class LimeTabularAdapter(BaseExplainer):
