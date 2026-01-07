@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from sklearn.model_selection import train_test_split
 
 
@@ -28,6 +28,7 @@ class BaseDataset(ABC):
         self.y_test: pd.Series | None = None
 
         self.feature_mapping: Dict[str, List[str]] = {}
+        self.feature_ranges: Dict[str, Tuple[float, float]] = {}
 
         self._load_and_prepare()
 
@@ -56,6 +57,9 @@ class BaseDataset(ABC):
             stratify=y if self.stratify else None
         )
 
+        self.feature_ranges = {col: (self.X_train[col].min(), self.X_train[col].max())
+                           for col in self.X_train.columns}
+
     def one_hot_encode_with_mapping(
         self,
         df: pd.DataFrame,
@@ -66,7 +70,7 @@ class BaseDataset(ABC):
         mapping = {}
 
         for col in columns:
-            dummies = pd.get_dummies(df[col], prefix=col)
+            dummies = pd.get_dummies(df[col], prefix=col).astype(float)
             mapping[col] = list(dummies.columns)
             df = pd.concat([df, dummies], axis=1)
             if drop_original:

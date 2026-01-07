@@ -1,6 +1,6 @@
-# std-lib imports
-from typing import Optional, Sequence
 from __future__ import annotations
+from typing import Optional, Sequence
+
 
 # 3 party imports
 import numpy as np

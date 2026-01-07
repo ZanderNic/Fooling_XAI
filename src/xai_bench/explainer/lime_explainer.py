@@ -33,7 +33,6 @@ class LimeTabularAdapter(BaseExplainer):
         dataset: BaseDataset,
         num_samples: int = 5000,
         num_features: Optional[int] = None,
-        aggregate_raw: bool = False,
         random_state: int = 42
         ):
         """
@@ -53,7 +52,6 @@ class LimeTabularAdapter(BaseExplainer):
         self.dataset = dataset
         self.num_samples = int(num_samples)
         self.num_features = num_features 
-        self.aggregate_raw = aggregate_raw
         self.random_state = int(random_state)
         self._lime = None
 

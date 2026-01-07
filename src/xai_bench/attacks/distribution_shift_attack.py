@@ -7,19 +7,21 @@ from xai_bench.attacks.base_attack import BaseAttack
 class DistributionShiftAttack(BaseAttack):
     def __init__(
         self,
+        dataset,
         model,
-        feature_ranges: dict,
-        protected_features: list = None,
         epsilon: float = 0.1,
         max_tries: int = 100,
         prob_tolerance: float = 0.01
     ):
         super().__init__(model)
-        self.feature_ranges = feature_ranges
-        self.protected_features = protected_features or []
+        self.dataset = dataset
+        self.model = model
         self.epsilon = epsilon
         self.max_tries = max_tries
         self.prob_tolerance = prob_tolerance
+
+        self.feature_ranges = self.dataset.feature_ranges
+        self.protected_features = self.dataset.categorical_features
 
     def _prediction_distance(self, x, x_adv):
         p = self.model.predict_proba(pd.DataFrame([x]))[0]

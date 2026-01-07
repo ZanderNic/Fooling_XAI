@@ -20,6 +20,7 @@ class HeartDataset(BaseDataset):
 
         self.y_full = df[self.target]
         X = df.drop(columns=[self.target])
+        X = X.astype(float)
 
         X = self.one_hot_encode_with_mapping(X, self.categorical_features)
 
@@ -27,8 +28,8 @@ class HeartDataset(BaseDataset):
             if col not in sum(self.feature_mapping.values(), []):
                 self.feature_mapping[col] = [col]
 
-        self.X_full = X
-        return X
+        self.X_full = X.astype(float)
+        return self.X_full
     
 
 if __name__ == "__main__":
