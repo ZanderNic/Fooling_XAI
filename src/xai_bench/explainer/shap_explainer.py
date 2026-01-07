@@ -10,7 +10,6 @@ import shap
 # projekt imports
 from .base_explainer import BaseExplainer, Explanation
 
-
 class ShapAdapter(BaseExplainer):
     def __init__(self, nsamples: int = 2000, background_size: int = 200, random_state: int = 42):
         self.nsamples = int(nsamples)
@@ -69,8 +68,4 @@ class ShapAdapter(BaseExplainer):
             explainer = shap.KernelExplainer(model_pred, self._background)
             shap_values = explainer.shap_values(x, nsamples=self.nsamples, random_state=self.random_state, silent=True)
         
-            return Explanation(
-                attributions=np.asarray(shap_values, dtype=float).reshape(-1),
-                base_value=float(explainer.expected_value),
-                target=None
-            )
+            return shap_values

@@ -10,14 +10,6 @@ TaskType = Literal["classification", "regression"]
 OutputSpace = Literal["model", "raw"]
 #
 
-class Explanation:
-    def __init__(self, attributions, base_value=None, target=None):
-        self.attributions = attributions
-        self.base_value = base_value
-        self.target = target
-
-
-
 class BaseExplainer:
     """
         Abstract base class for all explanation methods used in the benchmark.
@@ -77,7 +69,7 @@ class BaseExplainer:
         self, 
         x: np.ndarray, 
         target: Optional[int] = None
-    ) -> Explanation:
+    ) -> np.array:
         """
             Generate a local explanation for a single input sample.
 

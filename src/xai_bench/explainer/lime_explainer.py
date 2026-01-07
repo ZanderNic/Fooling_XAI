@@ -96,7 +96,7 @@ class LimeTabularAdapter(BaseExplainer):
         self, 
         x: np.ndarray, 
         target: Optional[int] = None
-    ) -> Explanation:
+    ) -> np.array:
         """
             Compute a local LIME explanation for a single input sample.
 
@@ -177,7 +177,4 @@ class LimeTabularAdapter(BaseExplainer):
             if 0 <= idx < d:
                 weights[idx] = float(w)
 
-        return Explanation(
-            attributions=weights,
-            target=target if self.model.task == "classification" else None,
-        )
+        return weights
