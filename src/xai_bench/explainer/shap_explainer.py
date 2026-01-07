@@ -8,7 +8,7 @@ import numpy as np
 import shap
 
 # projekt imports
-from .base_explainer import BaseExplainer, Explanation
+from xai_bench.explainer.base_explainer import BaseExplainer
 
 class ShapAdapter(BaseExplainer):
     def __init__(self, nsamples: int = 2000, background_size: int = 200, random_state: int = 42):
@@ -44,7 +44,7 @@ class ShapAdapter(BaseExplainer):
         self, 
         x: np.ndarray, 
         target: Optional[int] = None
-    ) -> Explanation:
+    ) -> np.array:
         x = np.asarray(x, dtype=float).reshape(1, -1)
 
         if self.model.task == "classification":
@@ -56,11 +56,8 @@ class ShapAdapter(BaseExplainer):
 
             explainer = shap.KernelExplainer(model_pred, self._background)
             shap_values = explainer.shap_values(x, nsamples=self.nsamples, random_state=self.random_state, silent=True)
-            return Explanation(
-                attributions=np.asarray(shap_values, dtype=float).reshape(-1),
-                base_value=float(explainer.expected_value),
-                target=int(target)
-            )
+            np.asarray(shap_values, dtype=float).reshape(-1)
+            
         else:
             def model_pred(X):
                 return np.asarray(self.model.predict_scalar(np.asarray(X, dtype=float), target=None), dtype=float).reshape(-1)
