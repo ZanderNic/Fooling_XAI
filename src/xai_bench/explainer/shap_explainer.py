@@ -44,7 +44,7 @@ class ShapAdapter(BaseExplainer):
         self, 
         x: np.ndarray, 
         target: Optional[int] = None
-    ) -> Explanation:
+    ) -> np.array:
         x = np.asarray(x, dtype=float).reshape(1, -1)
 
         if self.model.task == "classification":
