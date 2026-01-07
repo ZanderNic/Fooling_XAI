@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-import pandas as pd
+import numpy as np
 
 
 class BaseAttack(ABC):
@@ -7,5 +7,5 @@ class BaseAttack(ABC):
         self.model = model
 
     @abstractmethod
-    def generate(self, x: pd.Series) -> pd.Series:
+    def generate(self, x: np.ndarray) -> np.ndarray:
         pass

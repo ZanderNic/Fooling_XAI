@@ -77,7 +77,7 @@ class LimeTabularAdapter(BaseExplainer):
 
                 features:
                     Feature specification. Must expose:
-                    - `feature_names_model`: list[str] of length d
+                    list[str] of length d
         """
         self.reference_data = reference_data
         self.model = model
@@ -86,7 +86,7 @@ class LimeTabularAdapter(BaseExplainer):
         mode = "regression" if model.task == "regression" else "classification"
         self._lime = lime.lime_tabular.LimeTabularExplainer(
             training_data=reference_data,
-            feature_names=features.feature_names_model,
+            feature_names=features,
             mode=mode,
             discretize_continuous=False,                # keep deterministic no binning
             random_state=self.random_state,

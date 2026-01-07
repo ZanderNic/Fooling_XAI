@@ -27,6 +27,7 @@ class BaseDataset(ABC):
         self.y_train: pd.Series | None = None
         self.y_test: pd.Series | None = None
 
+        self.features: List[str] = []
         self.feature_mapping: Dict[str, List[str]] = {}
         self.feature_ranges: Dict[str, Tuple[float, float]] = {}
 
@@ -57,6 +58,7 @@ class BaseDataset(ABC):
             stratify=y if self.stratify else None
         )
 
+        self.features = list(self.X_full.columns)
         self.feature_ranges = {col: (self.X_train[col].min(), self.X_train[col].max())
                            for col in self.X_train.columns}
 

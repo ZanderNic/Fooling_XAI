@@ -15,6 +15,11 @@ model = SKRandomForest("classification")
 lime_explainer = LimeTabularAdapter(
     dataset=dataset
     )
+lime_explainer.fit(
+    reference_data=dataset.X_train.values,
+    model=model,
+    features=dataset.features
+)
 
 attack = DistributionShiftAttack(
     dataset=dataset,

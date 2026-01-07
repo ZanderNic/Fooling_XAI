@@ -27,8 +27,8 @@ class AttackEvaluator:
 
         for i in range(len(X_test)):
             x = self.dataset.X_test.iloc[i]
-            exp = self.explainer.explain(x)
-            x_adv = self.attack.generate(x)
+            exp = self.explainer.explain(x.values)
+            x_adv = self.attack.generate(x.values)
             exp_adv = self.explainer.explain(x_adv)
 
             results.append({
