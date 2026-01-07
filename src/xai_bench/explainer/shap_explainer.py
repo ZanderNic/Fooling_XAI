@@ -9,9 +9,12 @@ import shap
 
 # projekt imports
 from xai_bench.explainer.base_explainer import BaseExplainer
+from xai_bench.datasets.base_dataset import BaseDataset
+
 
 class ShapAdapter(BaseExplainer):
-    def __init__(self, nsamples: int = 2000, background_size: int = 200, random_state: int = 42):
+    def __init__(self, dataset: BaseDataset, nsamples: int = 2000, background_size: int = 200, random_state: int = 42):
+        self.dataset = dataset
         self.nsamples = int(nsamples)
         self.background_size = int(background_size)
         self.random_state = int(random_state)
@@ -44,7 +47,15 @@ class ShapAdapter(BaseExplainer):
         self, 
         x: np.ndarray, 
         target: Optional[int] = None
-    ) -> np.array:
+    ) -> np.ndarray:
+        """
+        Compute a SHAP explanation and aggregate it according to the dataset's feature mapping.
+        Works for classification and regression.
+
+        Returns:
+            feature_importances (np.ndarray): 
+                Feature importances in the original feature order.
+        """
         x = np.asarray(x, dtype=float).reshape(1, -1)
 
         if self.model.task == "classification":
@@ -56,13 +67,14 @@ class ShapAdapter(BaseExplainer):
 
             explainer = shap.KernelExplainer(model_pred, self._background)
             shap_values = explainer.shap_values(x, nsamples=self.nsamples, random_state=self.random_state, silent=True)
-            np.asarray(shap_values, dtype=float).reshape(-1)
-            
-        else:
+            shap_values = np.asarray(shap_values).reshape(-1)
+
+        else:  # regression
             def model_pred(X):
                 return np.asarray(self.model.predict_scalar(np.asarray(X, dtype=float), target=None), dtype=float).reshape(-1)
 
             explainer = shap.KernelExplainer(model_pred, self._background)
             shap_values = explainer.shap_values(x, nsamples=self.nsamples, random_state=self.random_state, silent=True)
-        
-            return shap_values
+            shap_values = np.asarray(shap_values).reshape(-1)
+
+        return self.dataset.explanation_to_array(shap_values)

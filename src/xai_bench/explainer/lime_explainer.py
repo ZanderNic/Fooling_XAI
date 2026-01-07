@@ -9,6 +9,7 @@ import lime.lime_tabular
 
 # projekt imports
 from xai_bench.explainer.base_explainer import BaseExplainer
+from xai_bench.datasets.base_dataset import BaseDataset
 
 
 class LimeTabularAdapter(BaseExplainer):
@@ -29,11 +30,12 @@ class LimeTabularAdapter(BaseExplainer):
     
     def __init__(
         self,
+        dataset: BaseDataset,
         num_samples: int = 5000,
         num_features: Optional[int] = None,
         aggregate_raw: bool = False,
-        random_state: int = 42,
-    ):
+        random_state: int = 42
+        ):
         """
             Args:
                 num_samples:
@@ -48,6 +50,7 @@ class LimeTabularAdapter(BaseExplainer):
                 random_state:
                     Random seed forwarded to the LIME explainer to improve reproducibility.
         """
+        self.dataset = dataset
         self.num_samples = int(num_samples)
         self.num_features = num_features 
         self.aggregate_raw = aggregate_raw
@@ -126,55 +129,32 @@ class LimeTabularAdapter(BaseExplainer):
                     the class chosen internally by LIME is used.
 
             Returns:
-                Explanation:
-                    An explanation object containing:
-                    - a dense vector of LIME feature weights with shape (d,),
-                    - the explained target class (for classification),
-                    - no base value (LIME does not provide a meaningful global reference),
-                    - metadata implicitly encoded via the attribution vector.
+                feature_importances (np.ndarray): 
+                    Feature importances in the original feature order.
 
             Raises:
                 AssertionError:
                     If the explainer has not been initialized via `fit()`.
         """
         assert self._lime is not None, "Call fit() first."
-        
         x = x.reshape(-1)
-        d = x.shape[0]
-        k = d if self.num_features is None else min(int(self.num_features), d)
 
         if self.model.task == "classification":
             if target is None:
                 raise ValueError("For classification, `target` must be provided.")
-
             exp = self._lime.explain_instance(
                 data_row=x,
-                predict_fn=self.model.predict_proba,   # must return (n, C)
-                labels=[target],                       # only explain this class
-                num_features=k,
-                num_samples=self.num_samples,
+                predict_fn=self.model.predict_proba,
+                labels=[target],
+                num_features=len(x),
+                num_samples=self.num_samples
             )
-
-            weights_list = exp.as_map().get(target)
-            if weights_list is None:
-                raise ValueError(
-                    f"LIME did not return an explanation for target={target}. "
-                    f"Available keys: {list(exp.as_map().keys())}"
-                )
-        else:
+        else:  # regression
             exp = self._lime.explain_instance(
                 data_row=x,
-                predict_fn=self.model.predict_scalar,  # must return (n,)
-                num_features=k,
-                num_samples=self.num_samples,
+                predict_fn=self.model.predict_scalar,
+                num_features=len(x),
+                num_samples=self.num_samples
             )
-           
-            weights_list = next(iter(exp.as_map().values()))     # LIME returns a single entry in as_map()
 
-        # convert sparse top-k list -> dense vector
-        weights = np.zeros(d, dtype=float)
-        for idx, w in weights_list:
-            if 0 <= idx < d:
-                weights[idx] = float(w)
-
-        return weights
+        return self.dataset.explanation_to_array(exp)
