@@ -56,11 +56,8 @@ class ShapAdapter(BaseExplainer):
 
             explainer = shap.KernelExplainer(model_pred, self._background)
             shap_values = explainer.shap_values(x, nsamples=self.nsamples, random_state=self.random_state, silent=True)
-            return Explanation(
-                attributions=np.asarray(shap_values, dtype=float).reshape(-1),
-                base_value=float(explainer.expected_value),
-                target=int(target)
-            )
+            np.asarray(shap_values, dtype=float).reshape(-1)
+            
         else:
             def model_pred(X):
                 return np.asarray(self.model.predict_scalar(np.asarray(X, dtype=float), target=None), dtype=float).reshape(-1)
