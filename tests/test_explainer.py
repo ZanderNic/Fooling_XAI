@@ -63,8 +63,8 @@ def test_classification():
     print("SHAP attributions shape:", e_shap.attributions.shape)
     print("SHAP base_value:", e_shap.base_value)
     print("LIME target:", e_lime.target, " | SHAP target:", e_shap.target)
-    print("LIME first 3:", e_lime.attributions[:3])
-    print("SHAP first 3:", e_shap.attributions[:3])
+    print("LIME first 3:", e_lime.attributions)
+    print("SHAP first 3:", e_shap.attributions)
     print()
 
 
@@ -95,8 +95,8 @@ def test_regression():
     print("SHAP attributions shape:", e_shap.attributions.shape)
     print("SHAP base_value:", e_shap.base_value)
     print("LIME target:", e_lime.target, " | SHAP target:", e_shap.target)
-    print("LIME first 3:", e_lime.attributions[:3])
-    print("SHAP first 3:", e_shap.attributions[:3])
+    print("LIME first 3:", e_lime.attributions)
+    print("SHAP first 3:", e_shap.attributions)
     print()
 
 
