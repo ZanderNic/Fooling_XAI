@@ -2,16 +2,28 @@ import numpy as np
 import pandas as pd
 from typing import Optional, Literal, Union, Any
 from itertools import permutations
+import math
 
 from xai_bench.base import BaseModel, BaseDataset, BaseAttack
-
+from tqdm.rich import tqdm, trange
 
 class ColumnSwitchAttack(BaseAttack):
-    def __init__(self, model:BaseModel, task: Literal["classification","regression"] ,dataset:Optional[BaseDataset]= None, n_switches:Optional[int]=None, max_tries:Optional[int]=None):
+    """
+    model: the model to use for fitting (finding best switches)
+    task: classification or regression, passed on to model.predict
+    If dataset and n_switches are given, then the attach will fit already in the init. Usefull if workflow would be otherwise unpractical
+    dataset: data to fit on
+    n_switches: number of ccolumns to permutate
+    max_tries: If not none, pick randomly from permutations until max_tries is reached (with possible repeats). Usefull if n_switches is high, as number of combinations is (n_switches)!
+    """
+    def __init__(self, model:BaseModel, task: Literal["classification","regression"], dataset:Optional[BaseDataset]= None, n_switches:Optional[int]=None, max_tries:Optional[int]=None):
         self.task: Literal["classification","regression"] = task
         super().__init__(model)
+        self.top_combi: Optional[list] = None
+        # directly fit if all parameters are given
         if dataset is not None and n_switches is not None:
             _ = self.fit(dataset=dataset,n_switches=n_switches,max_tries=max_tries)
+        
 
     # will predict on model and return mse between predictions
     def _prediction_distance(self, x, x_adv):
@@ -56,7 +68,9 @@ class ColumnSwitchAttack(BaseAttack):
     """
     def _evaluate(self,X_train:pd.DataFrame, combi:np.ndarray) -> float:
         x_adv = self._switch_columns(X_train,combi)
-        return self._prediction_distance(X_train,x_adv)
+        mse = self._prediction_distance(X_train,x_adv)
+        del x_adv
+        return mse
 
     """
     Will determine best (numerical) column switches bsed on n_switches and 
@@ -76,25 +90,37 @@ class ColumnSwitchAttack(BaseAttack):
         top_score = np.inf
         top_combi = []  # combi means lsit in index with data switching to the right. E.g. [1,4,6] would result in 1->4->6->1, so column 1 now has data from column 6, column 4 has now date from column 1 and column 6 has now data from column 4.
                         # So a combi of just two columns will jsut switch (and [1,0] is the same as [0,1]. This does not apply to n>2)
+        tbar = tqdm(unit="tries")
+        tbar.postfix = "Top Combi: []"
         if max_tries is not None:
-            for _ in range(max_tries):
+            tbar.total = max_tries
+            tbar.desc = "[CSA] Fitting MAX"
+            for _ in tqdm(range(max_tries)):
                 combi = np.random.choice(feature_indexes,size=(n_switches,),replace=False)
                 score = self._evaluate(dataset.X_train,combi)
                 if score<= top_score:
                     top_score = score
-                    top_combi = combi
+                    top_combi = list(combi)
+                    tbar.postfix = f"Top Combi: {top_combi}"
+                tbar.update()
         
         else:
+            tbar.total = math.factorial(n_switches)
+            tbar.desc = "[CSA] Fitting ALL"
             combinations = permutations(feature_indexes,n_switches)
             for combi in combinations:
                 # count down max tries if wanted
                 score = self._evaluate(dataset.X_train,np.asarray(combi))
                 if score<= top_score:
                     top_score = score
-                    top_combi = combi
-                   
+                    top_combi = list(combi)
+                    tbar.postfix = f"Current best Combi: {top_combi}"
+                tbar.update()
+        tbar.close()
         self.top_combi = top_combi
         return top_combi
 
     def generate(self, x: np.ndarray) -> np.ndarray:
+        if self.top_combi is None:
+            raise RuntimeError("Fit the attack first before generating adverserial data.")
         return self._switch_columns(x,self.top_combi) # type: ignore

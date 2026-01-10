@@ -3,3 +3,4 @@ lime
 shap
 torch
 kagglehub
+tqdm
