@@ -1,19 +1,20 @@
 import pandas as pd
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Union
 from sklearn.model_selection import train_test_split
-
+from xai_bench.explainer.base_explainer import Features
+from pathlib import Path
 
 class BaseDataset(ABC):
     def __init__(
         self,
-        path: str,
+        path: Union[str,Path],
         test_size: float = 0.2,
         random_state: int = 42,
         stratify: bool = True
     ):
-        self.path = path
+        self.path = Path(path)
         self.test_size = test_size
         self.random_state = random_state
         self.stratify = stratify
@@ -27,7 +28,7 @@ class BaseDataset(ABC):
         self.y_train: Optional[pd.Series] = None
         self.y_test: Optional[pd.Series] = None
 
-        self.features: List[str] = []
+        self.features: Optional[Features] = None
         self.feature_mapping: Dict[str, List[str]] = {}
         self.feature_ranges: Dict[str, Tuple[float, float]] = {}
 
@@ -61,7 +62,7 @@ class BaseDataset(ABC):
             stratify=y if self.stratify else None
         )
 
-        self.features = list(self.X_full.columns)
+        self.features = Features(list(self.X_full.columns))
         self.feature_ranges = {col: (self.X_train[col].min(), self.X_train[col].max())
                            for col in self.X_train.columns}
 
