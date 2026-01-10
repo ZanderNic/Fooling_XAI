@@ -1,8 +1,5 @@
 import os
 
-import sys
-sys.modules.keys()
-
 from xai_bench.datasets.heart_dataset import HeartDataset
 from xai_bench.models.random_forest import SKRandomForest
 from xai_bench.explainer.lime_explainer import LimeTabularAdapter
