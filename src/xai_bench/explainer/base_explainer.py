@@ -1,14 +1,22 @@
 # std lib imports
 from __future__ import annotations
 from typing import Any, Callable, Literal, Optional
+from dataclasses import dataclass
+
 
 # 3-party imports 
 import numpy as np
+
+# base imports
+from xai_bench.models.base_model import BaseModel
 
 # Options
 TaskType = Literal["classification", "regression"]
 OutputSpace = Literal["model", "raw"]
 #
+@dataclass
+class Features:
+    feature_names_model: list[str]
 
 class BaseExplainer:
     """
@@ -30,8 +38,8 @@ class BaseExplainer:
     def fit(
         self, 
         reference_data: np.ndarray, 
-        model, 
-        features
+        model: BaseModel, 
+        features: Features
     ) -> None:
         """  
             Initialize the explainer with all global information required to produce
@@ -69,7 +77,7 @@ class BaseExplainer:
         self, 
         x: np.ndarray, 
         target: Optional[int] = None
-    ) -> np.array:
+    ) -> np.ndarray:
         """
             Generate a local explanation for a single input sample.
 
