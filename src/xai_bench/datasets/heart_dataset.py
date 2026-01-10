@@ -11,7 +11,7 @@ class HeartDataset(BaseDataset):
         self.categorical_features = [
             "cp", "restecg", "slope", "thal"
         ]
-        self.target = "target"
+        self.target = "condition"
         super().__init__(path, **kwargs)
 
     def read(self) -> pd.DataFrame:
@@ -20,6 +20,7 @@ class HeartDataset(BaseDataset):
             raise ValueError("Path must point to csv. (Does not need to exist, but needs to end in .csv)")
         if not self.path.exists():
             path = kagglehub.dataset_download("cherngs/heart-disease-cleveland-uci","heart_cleveland_upload.csv")
+            print(f"Downloaded heart-disease-cleveland-uci dataset to {path}")
             self.path = Path(path)
         self.df_raw = pd.read_csv(self.path)
         return self.df_raw

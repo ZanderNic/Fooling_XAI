@@ -39,6 +39,10 @@ evaluator = AttackEvaluator(
     metric=metric
 )
 
+# fit model
+evaluator.fit()
+
+# evalute explainations & attack
 results = evaluator.evaluate(num_samples=10)
 
 print(results)
