@@ -8,8 +8,9 @@ import numpy as np
 import shap
 
 # projekt imports
-from xai_bench.explainer.base_explainer import BaseExplainer
+from xai_bench.explainer.base_explainer import BaseExplainer, Features
 from xai_bench.datasets.base_dataset import BaseDataset
+from xai_bench.models.base_model import BaseModel
 
 
 class ShapAdapter(BaseExplainer):
@@ -19,15 +20,15 @@ class ShapAdapter(BaseExplainer):
         self.background_size = int(background_size)
         self.random_state = int(random_state)
 
-        self.model = None
-        self.features = None
+        self.model: Optional[BaseModel] = None
+        self.features: Optional[Features] = None
         self._background = None
 
     def fit(
         self, 
         reference_data: np.ndarray, 
-        model, 
-        features,
+        model: BaseModel, 
+        features: Features,
         use_all_data: bool = False
     ) -> None:
         self.model = model
@@ -58,6 +59,8 @@ class ShapAdapter(BaseExplainer):
         """
         x = np.asarray(x, dtype=float).reshape(1, -1)
 
+        assert self.model is not None, "Model not fitted"
+
         if self.model.task == "classification":
             if target is None:
                 raise ValueError("For classification, `target` must be provided.")
@@ -71,7 +74,7 @@ class ShapAdapter(BaseExplainer):
 
         else:  # regression
             def model_pred(X):
-                return np.asarray(self.model.predict_scalar(np.asarray(X, dtype=float), target=None), dtype=float).reshape(-1)
+                return np.asarray(self.model.predict_scalar(np.asarray(X, dtype=float)), dtype=float).reshape(-1)
 
             explainer = shap.KernelExplainer(model_pred, self._background)
             shap_values = explainer.shap_values(x, nsamples=self.nsamples, random_state=self.random_state, silent=True)

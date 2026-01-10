@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Literal
 import numpy as np
 
 
@@ -37,10 +38,10 @@ class BaseModel(ABC):
         - No task switching at runtime
     """
 
-    def __init__(self, task: str):
+    def __init__(self, task: Literal["classification","regression"]):
         if task not in ("classification", "regression"):
             raise ValueError("task must be 'classification' or 'regression'")
-        self.task = task
+        self.task:Literal["classification","regression"] = task
 
 
     @abstractmethod

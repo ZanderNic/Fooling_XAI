@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.stats import spearmanr
+from typing import cast
 
 from xai_bench.metrics.base_metric import BaseMetric
 
@@ -11,8 +12,8 @@ class SpearmanMetric(BaseMetric):
     def compute(self, e1: np.ndarray, e2: np.ndarray) -> float:
         r1 = np.argsort(-np.abs(e1))
         r2 = np.argsort(-np.abs(e2))
-        r, _ = spearmanr(r1, r2)
-        return 1 - r
+        res = spearmanr(r1, r2)
+        return 1 - cast(float, res[0])
     
 
 if __name__ == "__main__":

@@ -8,8 +8,9 @@ import numpy as np
 import lime.lime_tabular 
 
 # projekt imports
-from xai_bench.explainer.base_explainer import BaseExplainer
+from xai_bench.explainer.base_explainer import BaseExplainer, Features
 from xai_bench.datasets.base_dataset import BaseDataset
+from xai_bench.models.base_model import BaseModel
 
 
 class LimeTabularAdapter(BaseExplainer):
@@ -59,8 +60,8 @@ class LimeTabularAdapter(BaseExplainer):
     def fit(
         self, 
         reference_data: np.ndarray, 
-        model, 
-        features
+        model: BaseModel, 
+        features: Features
     ) -> None:
         """
             Initialize the underlying LIME explainer.
@@ -73,7 +74,7 @@ class LimeTabularAdapter(BaseExplainer):
                 model:
                     Model wrapper/spec used by the benchmark. Must expose:
                     - `task` attribute: "classification" or "regression"
-                    - `predict_scalar(X, target=None) -> (n,)` method
+                    - `predict_scalar(X) -> (n,)` method
 
                 features:
                     Feature specification. Must expose:
@@ -86,7 +87,7 @@ class LimeTabularAdapter(BaseExplainer):
         mode = "regression" if model.task == "regression" else "classification"
         self._lime = lime.lime_tabular.LimeTabularExplainer(
             training_data=reference_data,
-            feature_names=features,
+            feature_names=features.feature_names_model,
             mode=mode,
             discretize_continuous=False,                # keep deterministic no binning
             random_state=self.random_state,
@@ -97,7 +98,7 @@ class LimeTabularAdapter(BaseExplainer):
         self, 
         x: np.ndarray, 
         target: Optional[int] = None
-    ) -> np.array:
+    ) -> np.ndarray:
         """
             Compute a local LIME explanation for a single input sample.
 
@@ -143,7 +144,7 @@ class LimeTabularAdapter(BaseExplainer):
             exp = self._lime.explain_instance(
                 data_row=x,
                 predict_fn=self.model.predict_proba,
-                labels=[target],
+                labels=[target], #??? should be either none or list of all classes that should be explained or top-k
                 num_features=len(x),
                 num_samples=self.num_samples
             )

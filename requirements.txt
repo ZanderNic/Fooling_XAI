@@ -1,3 +1,5 @@
 numpy
 lime
 shap
+torch
+kagglehub

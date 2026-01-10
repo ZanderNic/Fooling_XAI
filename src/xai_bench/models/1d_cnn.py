@@ -1,16 +1,15 @@
 # std-lib imports
-from typing import Optional, Sequence, Union
 from __future__ import annotations
+from typing import Optional, Sequence, Union, Literal
 
 # 3 party imports
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 # projekt imports
-from xai_bench.models.base_model import BaseModel
+from xai_bench.base import BaseModel
 
 
 def _to_numpy(X) -> np.ndarray:
@@ -53,7 +52,7 @@ class TorchCNN1D(BaseModel):
 
     def __init__(
         self,
-        task: str,
+        task: Literal["classification","regression"],
         *,
         in_channels: int = 1,
         seq_len: int,

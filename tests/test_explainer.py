@@ -1,19 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import numpy as np
 
 # import your adapters (adjust paths!)
-from src.xai_bench.explainer.lime_explainer import LimeTabularAdapter
-from src.xai_bench.explainer.shap_explainer import ShapAdapter
+from xai_bench.explainer.lime_explainer import LimeTabularAdapter
+from xai_bench.explainer.shap_explainer import ShapAdapter
+from xai_bench.explainer.base_explainer import Features
 
 
 import sys, os
 sys.path.append(os.path.abspath("src"))
 
-@dataclass
-class Features:
-    feature_names_model: list[str]
 
 
 class NumpyLinearModel:

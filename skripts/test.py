@@ -39,14 +39,19 @@ evaluator = AttackEvaluator(
     metric=metric
 )
 
+# fit model
+evaluator.fit()
+
+# evalute explainations & attack
 results = evaluator.evaluate(num_samples=10)
 
-summary = summarize(
-    results_df=results,
-    metric_name=metric.name,
-    threshold=0.3
-)
+print(results)
+# summary = summarize(
+#     results_df=results,
+#     metric_name=metric.name,
+#     threshold=0.3
+# )
 
-print("=== Attack Evaluation ===")
-for k, v in summary.items():
-    print(f"{k}: {v:.3f}")
+# print("=== Attack Evaluation ===")
+# for k, v in summary.items():
+#     print(f"{k}: {v:.3f}")
