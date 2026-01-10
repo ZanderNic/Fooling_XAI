@@ -221,3 +221,6 @@ __marimo__/
 # Heart Failure
 !heart_failure_clinical_records_dataset_baseline.csv
 !heart_failure_clinical_records_dataset_leakage.csv
+
+# macos
+*.DS_Store
