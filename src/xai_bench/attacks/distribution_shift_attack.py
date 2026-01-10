@@ -1,14 +1,14 @@
 import numpy as np
 import pandas as pd
 
-from xai_bench.attacks.base_attack import BaseAttack
+from xai_bench.base import BaseAttack, BaseDataset, BaseModel
 
 
 class DistributionShiftAttack(BaseAttack):
     def __init__(
         self,
-        dataset,
-        model,
+        dataset: BaseDataset,
+        model: BaseModel,
         epsilon: float = 0.1,
         max_tries: int = 100,
         prob_tolerance: float = 0.01

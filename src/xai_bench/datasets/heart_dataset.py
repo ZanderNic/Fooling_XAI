@@ -16,6 +16,7 @@ class HeartDataset(BaseDataset):
         return self.df_raw
 
     def preprocess(self) -> pd.DataFrame:
+        assert self.df_raw is not None, "Dataframe was not read in."
         df = self.df_raw.copy()
 
         self.y_full = df[self.target]

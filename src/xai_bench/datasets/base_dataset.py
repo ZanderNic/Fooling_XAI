@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from sklearn.model_selection import train_test_split
 
 
@@ -18,18 +18,20 @@ class BaseDataset(ABC):
         self.random_state = random_state
         self.stratify = stratify
 
-        self.df_raw: pd.DataFrame | None = None
-        self.X_full: pd.DataFrame | None = None
-        self.y_full: pd.Series | None = None
+        self.df_raw: Optional[pd.DataFrame] = None
+        self.X_full: Optional[pd.DataFrame]= None
+        self.y_full: Optional[pd.Series] = None
 
-        self.X_train: pd.DataFrame | None = None
-        self.X_test: pd.DataFrame | None = None
-        self.y_train: pd.Series | None = None
-        self.y_test: pd.Series | None = None
+        self.X_train: Optional[pd.DataFrame]= None
+        self.X_test: Optional[pd.DataFrame]= None
+        self.y_train: Optional[pd.Series] = None
+        self.y_test: Optional[pd.Series] = None
 
         self.features: List[str] = []
         self.feature_mapping: Dict[str, List[str]] = {}
         self.feature_ranges: Dict[str, Tuple[float, float]] = {}
+
+        self.categorical_features: Optional[List[str]] # from heart datasets
 
         self._load_and_prepare()
 
@@ -47,6 +49,7 @@ class BaseDataset(ABC):
         pass
 
     def _split(self):
+        assert self.X_full is not None and self.y_full is not None, "Dataset not processed."
         X = self.X_full
         y = self.y_full
 
