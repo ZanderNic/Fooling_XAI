@@ -379,18 +379,18 @@ def init_population(
     assert isinstance(mutation_rate, float)
     assert 0 < mutation_rate <= 1
     assert isinstance(initial_mutation_std, float)
-    assert 0 < initial_mutation_std <= 1
+    assert 0 <= initial_mutation_std <= 1
     assert isinstance(individual_sample_size, int)
     assert individual_sample_size > 0
 
     population = []
 
     # determine random mutation stds for each individual
-    mutation_stds = np.clip(np.random.normal(
+    mutation_stds = np.abs(np.random.normal(
         loc=initial_mutation_std,
         scale=0.015,
         size=(population_size, reference_data.shape[1])
-    ), 0, None)
+    ))
 
     for i in range(population_size):
         individual_list = []
@@ -587,8 +587,10 @@ def population_fitness(
     stds = np.array([individual_list[0].mutation_stds for individual_list in population])
     stds = np.abs(stds).sum(axis=1)
 
+    OPTIMIZATION_WEIGHT = 5
+
     # determine fitnesses as tuples of (||stds||, violation_measure)
-    fitnesses = np.array(list(zip(stds, violation)))
+    fitnesses = np.array(list(zip(stds, OPTIMIZATION_WEIGHT*violation)))
 
     print(f"Calculating optimization metrics took {time.time() - start_time} seconds.")
 
@@ -1239,18 +1241,20 @@ def evolve_population(
 
         logging.append((ranked_metrics, current_population))
 
-        print(f"Initial Population - Best Fitness: {fitness(ranked_metrics[0][:2]):.6f} --- Time: {time.time() - time_start:.2f}s")
-
         # store the best individual and fitness from the initial population
         best_stds.append(ranked_metrics[0][2:])
         best_fitnesses.append(fitness(ranked_metrics[0][:2]))
 
         early_stopping.update(best_fitnesses[-1], best_stds[-1])
 
-        print(f"before evolution --- Time: {time.time() - time_start:.2f}s")
+        print(f"Initial Population - Best Fitness: {fitness(ranked_metrics[0][:2]):.6f} --- Time: {time.time() - time_start:.2f}s")
+        print(f"--- mutation stds: {best_stds[-1]}")
+
+        print("-----")
 
         # evolve over n_generations
         for _ in range(n_generations):
+            generation_start_time = time.time()
             if early_stopping.check_early_stopping():
                 print(f"Early stopping triggered before generation {_+1}.")
                 break
@@ -1268,7 +1272,7 @@ def evolve_population(
                 X_cat
             )
 
-            print(f"--- produced next generation --- Time: {time.time() - time_start:.2f}s")
+            print(f"--- produced next generation --- Time: {time.time() - generation_start_time:.2f}s")
 
             # claculate the fitness for all individuals in the current population
             fitness_metrics = population_fitness(
@@ -1287,7 +1291,7 @@ def evolve_population(
 
             logging.append((ranked_metrics, current_population))
 
-            print(f"--- calculated fitnesses --- Time: {time.time() - time_start:.2f}s")
+            print(f"--- calculated fitnesses --- Time: {time.time() - generation_start_time:.2f}s")
 
             # store the best individual and fitness from the initial population
             best_stds.append(ranked_metrics[0][2:])
@@ -1297,7 +1301,7 @@ def evolve_population(
 
             print(f"Generation {_+1}/{n_generations} - Best Fitness: {best_fitnesses[-1]:.6f}")
             print(f"--- mutation stds: {best_stds[-1]}")
-            print(f"--> completed generation --- Time: {time.time() - time_start:.2f}s")
+            print(f"--> completed generation --- Time: {time.time() - generation_start_time:.2f}s (total: {time.time() - time_start:.2f}s)")
     except KeyboardInterrupt:
         print("Evolution interrupted by user.")
 

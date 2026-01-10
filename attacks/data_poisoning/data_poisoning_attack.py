@@ -9,7 +9,7 @@ import pickle
 # read the data
 print("Loading data...")
 
-DATA_PATH = r"../../data/diabetes/diabetes.csv"
+DATA_PATH = r"./data/diabetes.csv"
 
 df = pd.read_csv(DATA_PATH, header=0)
 
@@ -34,9 +34,9 @@ model = RandomForestClassifier(
     n_jobs=-1
 )
 
-model.fit(X_train, y_train)
+model.fit(X_train.values, y_train.values)
 
-print(f"Model test accuracy: {model.score(X_test, y_test):.4f}")
+print(f"Model test accuracy: {model.score(X_test.values, y_test.values):.4f}")
 
 
 # prepare attack parameters
@@ -52,7 +52,7 @@ N_GEN = 40
 N_SAMPLE = 5
 
 INIT_MUTATION_RATE = 1.0  # for full std evaluation
-INIT_STD = 0.4
+INIT_STD = 0.0
 
 P_ELITE = 0.05
 P_COMBINE = 0.1
@@ -115,7 +115,7 @@ pickle.dump(
         "y_train": y_train,
         "model": model,
     },
-    open(f"./evolution_results_{N_POP}p_{N_SAMPLE}s_{N_GEN}g_{DRIFT_THRESHOLD}dt_{DRIFT_CONFIDENCE}dc.pkl", "wb")
+    open(f"./evolution_results_{N_POP}p_{N_SAMPLE}s_{N_GEN}g_{DRIFT_THRESHOLD}dt_{DRIFT_CONFIDENCE}dc_{INIT_STD}std.pkl", "wb")
 )
 
 print("Results saved.")
@@ -152,9 +152,10 @@ eval_plot = plot_evaluation(
 )
 
 eval_plot.savefig(
-    f"./evaluation_plot_{N_POP}p_{N_SAMPLE}s_{N_GEN}g_{DRIFT_THRESHOLD}dt_{DRIFT_CONFIDENCE}dc.png",
+    f"./evaluation_plot_{N_POP}p_{N_SAMPLE}s_{N_GEN}g_{DRIFT_THRESHOLD}dt_{DRIFT_CONFIDENCE}dc_{INIT_STD}std.png",
     dpi=400,
     bbox_inches='tight'
 )
 
 print("Evaluation plot saved.")
+print("Finished Attack.")
