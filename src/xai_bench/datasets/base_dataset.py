@@ -32,6 +32,7 @@ class BaseDataset(ABC):
         self.feature_mapping: Dict[str, List[str]] = {}
         self.feature_ranges: Dict[str, Tuple[float, float]] = {}
 
+        self.numerical_features: Optional[List[str]]
         self.categorical_features: Optional[List[str]] # from heart datasets
 
         self._load_and_prepare()
@@ -107,3 +108,9 @@ class BaseDataset(ABC):
 
     def get_feature_mapping(self) -> Dict[str, List[str]]:
         return self.feature_mapping
+    
+    def __str__(self) -> str:
+        if self.X_full is not None:
+            return f"Dataset(name={self.__class__.__name__}, samples={len(self.X_full)}, features={len(self.X_full.columns)})"
+        else:
+            return f"Dataset(name={self.__class__.__name__}, not yet loaded)"

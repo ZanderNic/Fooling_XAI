@@ -32,8 +32,8 @@ class AttackEvaluator:
 
         for i in range(len(X_test)):
             x = self.dataset.X_test.iloc[i]
-            exp = self.explainer.explain(x.values)
-            x_adv = self.attack.generate(x.values)
+            exp = self.explainer.explain(x.to_numpy()) # see https://pandas.pydata.org/docs/reference/api/pandas.Series.values.html#pandas.Series.values
+            x_adv = self.attack.generate(x.to_numpy())
             exp_adv = self.explainer.explain(x_adv)
 
             results.append({
