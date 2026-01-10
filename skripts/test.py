@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 from xai_bench.datasets.heart_dataset import HeartDataset
 from xai_bench.models.random_forest import SKRandomForest
@@ -7,7 +7,7 @@ from xai_bench.attacks.distribution_shift_attack import DistributionShiftAttack
 from xai_bench.metrics.cosine_metric import CosineMetric
 from xai_bench.attack_evaluator import AttackEvaluator
 
-path = os.path.join("datasets", "heart.csv")
+path = Path("src") / "xai_bench" / "datasets" / "heart.csv"
 dataset = HeartDataset(path)
 
 model = SKRandomForest("classification")
