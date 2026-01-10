@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Sequence
+from typing import Optional, Literal, TypedDict, Union
 
 
 # 3 party imports
@@ -30,6 +30,12 @@ def _check_1d_vector(y) -> np.ndarray:
         raise ValueError("y must be 1D of shape (n,).")
     return y
 
+class rf_kwargs(TypedDict):
+    n_estimators: int
+    random_state: int
+    n_jobs: int
+    max_depth: Optional[int]
+
 ###################################################
 
 
@@ -44,7 +50,7 @@ class SKRandomForest(BaseModel):
 
     def __init__(
         self,
-        task: str,
+        task: Literal["classification","regression"],
         *,
         n_estimators: int = 300,
         random_state: int = 0,
@@ -53,7 +59,7 @@ class SKRandomForest(BaseModel):
         **kwargs,
     ):
         super().__init__(task)
-        self._rf_kwargs = dict(
+        self._rf_kwargs = rf_kwargs(
             n_estimators=n_estimators,
             random_state=random_state,
             n_jobs=n_jobs,
@@ -79,7 +85,7 @@ class SKRandomForest(BaseModel):
             raise NotImplementedError("predict_proba is only defined for classification models.")
         if self.model is None:
             raise RuntimeError("Model is not fitted. Call fit() first.")
-        proba = self.model.predict_proba(_to_numpy(X))
+        proba = self.model.predict(_to_numpy(X))
         proba = np.asarray(proba, dtype=np.float64)
         if proba.ndim != 2:
             raise ValueError("predict_proba must return array of shape (n, C)")

@@ -1,10 +1,9 @@
 # std-lib imports
-from typing import Optional, Sequence, Union
 from __future__ import annotations
+from typing import Optional, Sequence, Union, Literal
 
 # 3 party imports
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -53,7 +52,7 @@ class TorchMLP(BaseModel):
 
     def __init__(
         self,
-        task: str,
+        task: Literal["classification","regression"],
         *,
         input_dim: int,
         hidden_dims: Sequence[int] = (256, 256),

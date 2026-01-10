@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "xai_bench"
+version = "1.0.0"
+dependencies = [
+    "numpy",
+    "lime",
+    "shap",
+    "torch",
+    "kagglehub"
+]
+requires-python = ">=3.9"
+description = "XAI Attach Bench"
+
+[project.urls]
+Homepage = "https://github.com/ZanderNic/Fooling_XAI"
+Repository = "https://github.com/ZanderNic/Fooling_XAI.git"

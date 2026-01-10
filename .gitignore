@@ -216,5 +216,8 @@ __marimo__/
 !cs-training_clean.csv
 
 # Heart Failure
-!heart_failure.csv
 !heart.csv
+!heart_failure_.csv
+
+# macos
+*.DS_Store
