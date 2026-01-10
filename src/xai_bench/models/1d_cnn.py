@@ -4,7 +4,6 @@ from typing import Optional, Sequence, Union
 
 # 3 party imports
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
