@@ -45,7 +45,8 @@ class HeartDataset(BaseDataset):
 
 if __name__ == "__main__":
     import os
-    path = os.path.join("datasets", "heart.csv")
+    #path = os.path.join("datasets", "heart.csv")
+    path = "src/xai_bench/datasets/heart.csv"
     dataset = HeartDataset(path)
 
     print("Raw data shape:", dataset.df_raw.values.shape)
