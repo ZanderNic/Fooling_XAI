@@ -7,6 +7,7 @@ class PrisoneresDataset(BaseDataset):
         self.categorical_features = ['race']
         self.numerical_features = ['age', 'sex', 'decile_score', 'priors_count', 'days_in_jail', 'c_days_from_compas', 'is_violent_recid', 'v_decile_score']
         self.target = "is_recid"
+        self.task = "classification"
         super().__init__(path, **kwargs)
 
     def read(self) -> pd.DataFrame:

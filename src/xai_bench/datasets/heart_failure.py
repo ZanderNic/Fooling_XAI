@@ -9,6 +9,7 @@ class Heart_Failure(BaseDataset):
         self.categorical_features = ['anaemia','diabetes','high_blood_pressure','sex','smoking']
         self.numerical_features = ['age', 'creatinine_phosphokinase', 'ejection_fraction', 'platelets', 'serum_creatinine', 'serum_sodium', 'time']
         self.target = "died"
+        self.task = "classification"
         super().__init__(path, **kwargs)
 
     def read(self) -> pd.DataFrame:

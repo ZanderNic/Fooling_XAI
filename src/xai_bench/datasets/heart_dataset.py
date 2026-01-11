@@ -13,6 +13,7 @@ class HeartDataset(BaseDataset):
         ]
         self.numerical_features = ['age', 'sex', 'trestbps', 'chol', 'fbs', 'thalach', 'exang', 'oldpeak', 'ca']
         self.target = "condition"
+        self.task = "classification"
         super().__init__(path, **kwargs)
 
     def read(self) -> pd.DataFrame:

@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple, Optional, Union
+from typing import Dict, List, Tuple, Optional, Union, Literal
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
@@ -20,6 +20,7 @@ class BaseDataset(ABC):
         self.test_size = test_size
         self.random_state = random_state
         self.stratify = stratify
+        self.task: Optional[Literal["classification","regression"]] = None
 
         self.df_raw: Optional[pd.DataFrame] = None
         self.X_full: Optional[pd.DataFrame]= None

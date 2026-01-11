@@ -11,17 +11,10 @@ class ColumnSwitchAttack(BaseAttack):
     """
     model: the model to use for fitting (finding best switches)
     task: classification or regression, passed on to model.predict
-    If dataset and n_switches are given, then the attach will fit already in the init. Usefull if workflow would be otherwise unpractical
-    dataset: data to fit on
-    n_switches: number of ccolumns to permutate
-    max_tries: If not none, pick randomly from permutations until max_tries is reached (with possible repeats). Usefull if n_switches is high, as number of combinations is (n_switches)!
     """
-    def __init__(self, model:BaseModel, task: Literal["classification","regression"], dataset:Optional[BaseDataset]= None, n_switches:Optional[int]=None, max_tries:Optional[int]=None):
+    def __init__(self, model:BaseModel, task: Literal["classification","regression"]):
         super().__init__(model, task=task)
         self.top_combi: Optional[list] = None
-        # directly fit if all parameters are given
-        if dataset is not None and n_switches is not None:
-            _ = self.fit(dataset=dataset,n_switches=n_switches,max_tries=max_tries)
     
     """
     will create new adv data by switching columns according to given combi of indices
