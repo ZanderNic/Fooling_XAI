@@ -8,7 +8,9 @@ from xai_bench.datasets.base_dataset import BaseDataset
 class CreditDataset(BaseDataset):
     def __init__(self, path: str, **kwargs):
         self.categorical_features = []
+        self.numerical_features = ['RevolvingUtilizationOfUnsecuredLines', 'age', 'NumberOfTime30-59DaysPastDueNotWorse', 'DebtRatio', 'MonthlyIncome', 'NumberOfDependents', 'CombinedDefaulted', 'CombinedCreditLoans']
         self.target = "SeriousDlqin2yrs"
+        self.task = "classification"
         super().__init__(path, **kwargs)
 
     def read(self) -> pd.DataFrame:
