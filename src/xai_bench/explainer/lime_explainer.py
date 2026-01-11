@@ -156,4 +156,4 @@ class LimeTabularAdapter(BaseExplainer):
                 num_samples=self.num_samples
             )
 
-        return self.dataset.explanation_to_array(exp)
+        return self.dataset.explanation_to_array(exp, target=target)

@@ -86,12 +86,12 @@ class BaseDataset(ABC):
         self.feature_mapping.update(mapping)
         return df
 
-    def explanation_to_array(self, explanation, feature_order=None):
+    def explanation_to_array(self, explanation, target=None, feature_order=None):
         feature_order = feature_order or list(self.feature_mapping.keys())
 
         # For Lime
         if hasattr(explanation, "as_list"):
-            exp_dict = dict(explanation.as_list())
+            exp_dict = dict(explanation.as_list(label=target))
         # For Shap
         elif hasattr(explanation, "values") and hasattr(explanation, "feature_names"):
             exp_dict = dict(zip(explanation.feature_names, explanation.values))

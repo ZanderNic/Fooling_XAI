@@ -80,4 +80,10 @@ class ShapAdapter(BaseExplainer):
             shap_values = explainer.shap_values(x, nsamples=self.nsamples, random_state=self.random_state, silent=True)
             shap_values = np.asarray(shap_values).reshape(-1)
 
-        return self.dataset.explanation_to_array(shap_values)
+        # construct explanation object for compatibility with the dataset method
+        explanation_object = shap.Explanation(
+            values=shap_values,
+            feature_names=self.features.feature_names_model
+        )
+
+        return self.dataset.explanation_to_array(explanation_object)
