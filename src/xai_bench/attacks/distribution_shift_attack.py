@@ -26,26 +26,55 @@ class DistributionShiftAttack(BaseAttack):
         self.feature_ranges = self.dataset.feature_ranges
         self.protected_features = self.dataset.categorical_features
     
-    def _shift_feature(self, x, feature):
+    def _shift_feature(self, x: np.ndarray, idx: int) -> np.ndarray:
         x_new = x.copy()
-        f_min, f_max = self.feature_ranges[feature]
+        f_min, f_max = self.feature_ranges[idx]
         span = f_max - f_min
         shift = np.random.uniform(-self.epsilon, self.epsilon) * span
-        x_new[feature] = np.clip(x[feature] + shift, f_min, f_max)
+        x_new[idx] = np.clip(x[idx] + shift, f_min, f_max)
         return x_new
 
-    def generate(self, x: np.ndarray) -> np.ndarray:
+
+    def fit(self) -> None:
+        pass 
+
+    # def _generate(self, x: np.ndarray) -> np.ndarray:
+    #     x_adv = x.copy()
+    #     candidates = [
+    #         f for f in x.index
+    #         if f not in self.protected_features
+    #         and f in self.feature_ranges
+    #     ]
+
+    #     for _ in range(self.max_tries):
+    #         feature = np.random.choice(candidates)
+    #         x_candidate = self._shift_feature(x_adv, feature)
+    #         prob_shift = self._prediction_distance(x, x_candidate)
+
+    #         if prob_shift <= self.prob_tolerance:
+    #             x_adv = x_candidate
+
+    #     return x_adv
+    
+    def _generate(self, x: np.ndarray) -> np.ndarray:
         x_adv = x.copy()
+
         candidates = [
-            f for f in x.index
-            if f not in self.protected_features
-            and f in self.feature_ranges
+            idx for idx in self.feature_ranges.keys()
+            if idx not in self.protected_features
         ]
 
+        if not candidates:
+            return x_adv  # nothing to change
+
         for _ in range(self.max_tries):
-            feature = np.random.choice(candidates)
-            x_candidate = self._shift_feature(x_adv, feature)
-            prob_shift = self._prediction_distance(x, x_candidate)
+            idx = np.random.choice(candidates)
+            x_candidate = self._shift_feature(x_adv, idx)
+
+            prob_shift = self._prediction_distance(
+                x.reshape(1, -1),
+                x_candidate.reshape(1, -1),
+            ).mean()
 
             if prob_shift <= self.prob_tolerance:
                 x_adv = x_candidate

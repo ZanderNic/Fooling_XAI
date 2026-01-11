@@ -14,13 +14,14 @@ class BaseDataset(ABC):
         path: Union[str,Path],
         test_size: float = 0.2,
         random_state: int = 42,
-        stratify: bool = True
+        stratify: bool = True,
+        task : Optional[Literal["classification","regression"]] = None
     ):
         self.path = Path(path)
         self.test_size = test_size
         self.random_state = random_state
         self.stratify = stratify
-        self.task: Optional[Literal["classification","regression"]] = None
+        self.task: Optional[Literal["classification","regression"]]= task
 
         self.classes: Optional[list] = None
         self.num_classes: Optional[int] = None

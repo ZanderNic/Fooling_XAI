@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any, Callable, Literal, Optional
 from dataclasses import dataclass
 
-
 # 3-party imports 
 import numpy as np
 

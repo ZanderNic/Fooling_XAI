@@ -107,7 +107,7 @@ class ColumnSwitchAttack(BaseAttack):
         self.top_combi = top_combi
         return top_combi
 
-    def generate(self, x: np.ndarray) -> np.ndarray:
+    def _generate(self, x: np.ndarray) -> np.ndarray:
         if self.top_combi is None:
             raise RuntimeError("Fit the attack first before generating adverserial data.")
         return self._switch_columns(x,self.top_combi) # type: ignore

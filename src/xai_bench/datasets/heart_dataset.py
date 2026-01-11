@@ -7,14 +7,18 @@ from xai_bench.datasets.base_dataset import BaseDataset
 
 
 class HeartDataset(BaseDataset):
-    def __init__(self, path: Union[str, Path], **kwargs):
+    def __init__(self, path: Union[str, Path] = None, **kwargs):   
         self.categorical_features = [
-            "cp", "restecg", "slope", "thal"
+            "cp", "restecg", "slope", "thal", "sex"
         ]
-        self.numerical_features = ['age', 'sex', 'trestbps', 'chol', 'fbs', 'thalach', 'exang', 'oldpeak', 'ca']
+        self.numerical_features = ['age', 'trestbps', 'chol', 'fbs', 'thalach', 'exang', 'oldpeak', 'ca']
         self.target = "condition"
         self.task = "classification"
-        super().__init__(path, **kwargs)
+        
+        path = "src/xai_bench/datasets/heart.csv"
+    
+        super().__init__(path, task=self.task, **kwargs)
+
 
     def read(self) -> pd.DataFrame:
         # if not already downloaded downlaod 

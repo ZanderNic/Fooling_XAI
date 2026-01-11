@@ -43,7 +43,7 @@ class BaseModel(ABC):
 
     def __init__(self, task: Literal["classification","regression"]):
         if task not in ("classification", "regression"):
-            raise ValueError("task must be 'classification' or 'regression'")
+            raise ValueError(f"task must be 'classification' or 'regression' but is {task}")
         self.task:Literal["classification","regression"] = task
 
 

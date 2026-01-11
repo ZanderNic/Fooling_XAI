@@ -13,7 +13,8 @@ dependencies = [
     "torch",
     "kagglehub",
     "tqdm",
-    "rich"
+    "rich",
+    "jaxtyping"
 ]
 requires-python = ">=3.9"
 description = "XAI Attach Bench"

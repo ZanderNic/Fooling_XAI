@@ -71,12 +71,10 @@ class SKRandomForest(BaseModel):
     def fit(self, X, y) -> "SKRandomForest":
         Xn = _to_numpy(X)
         yn = _check_1d_vector(y)
-
-        if self.task == "classification":
-            self.model = RandomForestClassifier(**self._rf_kwargs)
-        else:
-            self.model = RandomForestRegressor(**self._rf_kwargs)
+        
+        self.model = RandomForestClassifier(**self._rf_kwargs)
         self.model.fit(Xn, yn)
+        
         return self
 
     def predict_proba(self, X) -> np.ndarray:
@@ -84,14 +82,17 @@ class SKRandomForest(BaseModel):
             raise NotImplementedError("predict_proba is only defined for classification models.")
         if self.model is None:
             raise RuntimeError("Model is not fitted. Call fit() first.")
+        
         proba = self.model.predict_proba(_to_numpy(X))
         proba = np.asarray(proba, dtype=np.float64)
+        
         if proba.ndim != 2:
             raise ValueError(f"predict_proba must return array of shape (n, C) but is {proba.shape}")
+        
         row_sums = proba.sum(axis=1)
         if not np.allclose(row_sums, 1.0, atol=1e-6):
-            # sklearn should already satisfy simplex; enforce strictly
             raise ValueError("predict_proba rows must sum to 1.")
+        
         return proba
 
     def predict_scalar(self, X) -> np.ndarray:
@@ -99,6 +100,7 @@ class SKRandomForest(BaseModel):
             raise NotImplementedError("predict_scalar is only defined for regression models.")
         if self.model is None:
             raise RuntimeError("Model is not fitted. Call fit() first.")
+        
         pred = self.model.predict(_to_numpy(X))
         pred = np.asarray(pred, dtype=np.float64)
         if pred.ndim != 1:
