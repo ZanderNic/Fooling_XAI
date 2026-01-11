@@ -12,6 +12,13 @@ class BaseAttack(ABC):
         self.task: Literal["classification","regression"] = task
 
     """
+    Call beforehand in order to setup the attack. (e.g. finding best parameters)
+    """
+    @abstractmethod
+    def fit(self):
+        pass
+
+    """
     Will recieve ONE sample to generate an attack on
     """
     @abstractmethod
