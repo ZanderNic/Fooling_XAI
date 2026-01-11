@@ -8,9 +8,9 @@ import numpy as np
 import lime.lime_tabular 
 
 # projekt imports
+from xai_bench.models.base_model import BaseModel
 from xai_bench.explainer.base_explainer import BaseExplainer, Features
 from xai_bench.datasets.base_dataset import BaseDataset
-from xai_bench.models.base_model import BaseModel
 
 
 class LimeTabularAdapter(BaseExplainer):
