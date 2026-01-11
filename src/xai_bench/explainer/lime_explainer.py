@@ -9,9 +9,9 @@ import lime.lime_tabular
 import shap 
 
 # projekt imports
+from xai_bench.models.base_model import BaseModel
 from xai_bench.explainer.base_explainer import BaseExplainer, Features, Explanation
 from xai_bench.datasets.base_dataset import BaseDataset
-from xai_bench.models.base_model import BaseModel
 
 
 class LimeTabularAdapter(BaseExplainer):
@@ -86,6 +86,7 @@ class LimeTabularAdapter(BaseExplainer):
         self.features = features
        
         mode = "regression" if model.task == "regression" else "classification"
+        
         self._lime = lime.lime_tabular.LimeTabularExplainer(
             training_data=reference_data,
             feature_names=features.feature_names_model,

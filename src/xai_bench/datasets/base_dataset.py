@@ -1,8 +1,10 @@
 import pandas as pd
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple, Optional, Union
+from typing import Dict, List, Tuple, Optional, Union, Literal, cast
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
 from xai_bench.explainer.base_explainer import Features, Explanation
 from pathlib import Path
 
@@ -18,7 +20,10 @@ class BaseDataset(ABC):
         self.test_size = test_size
         self.random_state = random_state
         self.stratify = stratify
+        self.task: Optional[Literal["classification","regression"]] = None
 
+        self.classes: Optional[list] = None
+        self.num_classes: Optional[int] = None
         self.df_raw: Optional[pd.DataFrame] = None
         self.X_full: Optional[pd.DataFrame]= None
         self.y_full: Optional[pd.Series] = None
@@ -32,8 +37,8 @@ class BaseDataset(ABC):
         self.feature_mapping: Dict[str, List[str]] = {}
         self.feature_ranges: Dict[str, Tuple[float, float]] = {}
 
-        self.numerical_features: Optional[List[str]]
         self.categorical_features: Optional[List[str]] # from heart datasets
+        self.numerical_features: Optional[List[str]]
 
         self._load_and_prepare()
 
@@ -55,6 +60,10 @@ class BaseDataset(ABC):
         X = self.X_full
         y = self.y_full
 
+        # set class counts
+        self.classes = cast(list,y.unique().tolist())
+        self.num_classes = len(self.classes)
+
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
             X,
             y,
@@ -62,6 +71,28 @@ class BaseDataset(ABC):
             random_state=self.random_state,
             stratify=y if self.stratify else None
         )
+
+        self.scaler = StandardScaler()
+        X_train_scaled = self.scaler.fit_transform(self.X_train[self.numerical_features])
+        X_test_scaled = self.scaler.transform(self.X_test[self.numerical_features])
+
+        one_hot_cols = sum(self.feature_mapping.values(), [])  
+
+        self.X_train_scaled = pd.concat(
+            [
+                pd.DataFrame(X_train_scaled, columns=self.numerical_features, index=self.X_train.index),
+                self.X_train[one_hot_cols].copy() 
+            ],
+            axis=1
+        )
+        self.X_test_scaled = pd.concat(
+            [
+                pd.DataFrame(X_test_scaled, columns=self.numerical_features, index=self.X_test.index),
+                self.X_test[one_hot_cols].copy()  
+            ],
+            axis=1
+        )
+
 
         self.features = Features(list(self.X_full.columns))
         self.feature_ranges = {col: (self.X_train[col].min(), self.X_train[col].max())

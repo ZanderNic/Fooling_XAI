@@ -2,28 +2,27 @@ import pandas as pd
 from xai_bench.datasets.base_dataset import BaseDataset
 
 
-
-
-class Heart_Failure(BaseDataset):
+class PrisoneresDataset(BaseDataset):
     def __init__(self, path: str, **kwargs):
-        self.categorical_features = ['anaemia','diabetes','high_blood_pressure','sex','smoking']
-        self.numerical_features = ['age', 'creatinine_phosphokinase', 'ejection_fraction', 'platelets', 'serum_creatinine', 'serum_sodium', 'time']
-        self.target = "died"
+        self.categorical_features = ['race']
+        self.numerical_features = ['age', 'sex', 'decile_score', 'priors_count', 'days_in_jail', 'c_days_from_compas', 'is_violent_recid', 'v_decile_score']
+        self.target = "is_recid"
         self.task = "classification"
         super().__init__(path, **kwargs)
 
     def read(self) -> pd.DataFrame:
-        self.df_raw = pd.read_csv(self.path)
+        self.df_raw = pd.read_csv(self.path, index_col=0)
         return self.df_raw
 
     def preprocess(self) -> pd.DataFrame:
         df = self.df_raw.copy()
-
+        
         self.y_full = df[self.target]
         X = df.drop(columns=[self.target])
-        X = X.astype(float)
 
         X = self.one_hot_encode_with_mapping(X, self.categorical_features)
+
+        X = X.astype(float)
 
         for col in X.columns:
             if col not in sum(self.feature_mapping.values(), []):
@@ -36,8 +35,13 @@ class Heart_Failure(BaseDataset):
 if __name__ == "__main__":
     import os
     #path = os.path.join("datasets", "heart.csv")
-    path = "src/xai_bench/datasets/heart_failure.csv"
-    dataset = Heart_Failure(path)
+    path = "src/xai_bench/datasets/compas_recidivism_racial_bias.csv"
+
+
+    df = pd.read_csv(path)
+    from sklearn.preprocessing import LabelEncoder
+
+    dataset = Prisoneres(path)
 
     print("Raw data shape:", dataset.df_raw.values.shape)
     print("X_train shape:", dataset.X_train.shape)
@@ -45,5 +49,7 @@ if __name__ == "__main__":
 
     print("Orignial columns:", dataset.df_raw.columns)
     print("Column mapping:", dataset.feature_mapping)
+
+    
 
     

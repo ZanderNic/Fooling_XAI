@@ -11,7 +11,9 @@ dependencies = [
     "lime",
     "shap",
     "torch",
-    "kagglehub"
+    "kagglehub",
+    "tqdm",
+    "rich"
 ]
 requires-python = ">=3.9"
 description = "XAI Attach Bench"

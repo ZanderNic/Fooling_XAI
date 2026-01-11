@@ -4,3 +4,4 @@ shap
 torch
 kagglehub
 tqdm
+rich

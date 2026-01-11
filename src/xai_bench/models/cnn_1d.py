@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 # projekt imports
-from xai_bench.base import BaseModel
+from xai_bench.models.base_model import BaseModel
 
 
 def _to_numpy(X) -> np.ndarray:
