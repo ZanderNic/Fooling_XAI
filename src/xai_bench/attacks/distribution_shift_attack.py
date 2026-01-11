@@ -34,7 +34,7 @@ class DistributionShiftAttack(BaseAttack):
         x_new[feature] = np.clip(x[feature] + shift, f_min, f_max)
         return x_new
 
-    def generate(self, x: np.ndarray) -> np.ndarray:
+    def _generate(self, x: np.ndarray) -> np.ndarray:
         x_adv = x.copy()
         candidates = [
             f for f in x.index
