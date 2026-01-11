@@ -85,10 +85,10 @@ class SKRandomForest(BaseModel):
             raise NotImplementedError("predict_proba is only defined for classification models.")
         if self.model is None:
             raise RuntimeError("Model is not fitted. Call fit() first.")
-        proba = self.model.predict(_to_numpy(X))
+        proba = self.model.predict_proba(_to_numpy(X))
         proba = np.asarray(proba, dtype=np.float64)
         if proba.ndim != 2:
-            raise ValueError("predict_proba must return array of shape (n, C)")
+            raise ValueError(f"predict_proba must return array of shape (n, C) but is {proba.shape}")
         row_sums = proba.sum(axis=1)
         if not np.allclose(row_sums, 1.0, atol=1e-6):
             # sklearn should already satisfy simplex; enforce strictly

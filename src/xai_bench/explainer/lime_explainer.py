@@ -85,6 +85,7 @@ class LimeTabularAdapter(BaseExplainer):
         self.features = features
        
         mode = "regression" if model.task == "regression" else "classification"
+        
         self._lime = lime.lime_tabular.LimeTabularExplainer(
             training_data=reference_data,
             feature_names=features.feature_names_model,
