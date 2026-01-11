@@ -1,17 +1,29 @@
-# std lib imports
 from __future__ import annotations
+import sys
+from pathlib import Path
+from rich import print as rich_print
+
+try:
+    import xai_bench
+except ModuleNotFoundError:
+    # in case module not correcltyloaded hardcode path
+    rich_print(f"[#aa0000][bold]xai_bench not found![/bold] Adding [italic #222222]{(Path(__file__).parent.parent/'src').__str__()}[/italic #222222] into python path.[/#aa0000]")
+    sys.path.insert(0,(Path(__file__).parent.parent/"src").__str__())
+
+# std lib imports
 import argparse
 import json
 from dataclasses import asdict
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Dict, Literal
 
 # 3-party imports
 from sklearn.metrics import accuracy_score
 import numpy as np
 
+
 # projekt imports
+from xai_bench.console import console
 from xai_bench.base import BaseDataset, BaseMetric
 
 # datasets
