@@ -21,7 +21,7 @@ class BaseDataset(ABC):
         self.test_size = test_size
         self.random_state = random_state
         self.stratify = stratify
-        self.task = task
+        self.task: Optional[Literal["classification","regression"]]= task
 
         self.classes: Optional[list] = None
         self.num_classes: Optional[int] = None

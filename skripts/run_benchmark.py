@@ -9,6 +9,7 @@ from typing import Dict, Literal
 
 # 3-party imports
 from sklearn.metrics import accuracy_score
+import numpy as np
 
 # projekt imports
 from xai_bench.base import BaseDataset, BaseMetric
@@ -25,7 +26,7 @@ from xai_bench.metrics.spearmen_metric import SpearmanMetric
 from xai_bench.metrics.wasserstein_metric import WassersteinMetric
 
 # utils imports
-from run_benchmark_utils import *
+from run_benchmark_utils import load_model, load_explainer, load_attack, now_utc_iso, timed_call
 
 
 DATASETS = {
@@ -48,9 +49,9 @@ EXPLAINER = [ "Shap", "Lime" ]
 
 def run(
     dataset: BaseDataset,
-    model: Literal["CNN1D", "MLP", "RF"],
-    attack: Literal["DistributionShiftAttack", "ColumnSwitchAttack"],
-    explainer: Literal["Shap", "Lime"],
+    model_name: Literal["CNN1D", "MLP", "RF"],
+    attack_name: Literal["DistributionShiftAttack", "ColumnSwitchAttack"],
+    explainer_name: Literal["Shap", "Lime"],
     metric: BaseMetric,
     seed: int,
     num_samples: int  = 1000
@@ -60,17 +61,20 @@ def run(
     """
     
     # get model
-    model = load_model(model, dataset, seed)                          
+    model = load_model(model_name, dataset, seed)        
+    assert dataset.X_train is not None and dataset.y_train is not None, "Sth went wwrong at with the dataset"
     model.fit(dataset.X_train.values, dataset.y_train.values)   
+    assert dataset.y_test is not None and dataset.X_test is not None, "Sth went wrong wirh datatset"
     acc = accuracy_score(dataset.y_test.values, model.predict(dataset.X_test.values))
     
     # get explainer 
-    explainer = load_explainer(explainer, dataset, seed)
-    explainer.fit(dataset.X_train.values, model, dataset.features)
+    explainer = load_explainer(explainer_name, dataset, seed)
+    assert dataset.features is not None, "Sth went wrong with dataset"
+    _, t_fit = timed_call(explainer.fit,dataset.X_train.values, model, dataset.features)
     
     
     # get attack
-    attack = load_attack(attack_string=attack, dataset=dataset, model=model, explainer=explainer, metric=metric, seed=seed)
+    attack = load_attack(attack_string=attack_name, dataset=dataset, model=model, explainer=explainer, metric=metric, seed=seed)
     
     # how many samples to get the score
     if len(dataset.X_test) <= num_samples:
@@ -78,11 +82,12 @@ def run(
     else:
         X_test = dataset.X_test.sample(n=num_samples)
     
+
     # we need to compare the distance of the real explaination and the attacked one 
     X_adv, t_generate = timed_call(attack.generate, X_test)
 
     # generate explanation for real dataset X_test and X_adv
-    x_real_exp = explainer.explain(X_test)
+    x_real_exp = explainer.explain(np.asarray(X_test))
     x_adv_exp = explainer.explain(X_adv)
     
     
@@ -106,6 +111,7 @@ def run(
         },
         "timing": {
             "attack_generate": asdict(t_generate),
+            "attack_fit": asdict(t_fit)
         },
         "scores": scores,
     }
@@ -124,7 +130,14 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     
-    result = run(dataset=DATASETS[args.dataset](), model=args.model, attack=args.attack, explainer=args.explainer,metric=METRICS[args.metric](), seed = args.seed)
+    result = run(
+        dataset=DATASETS[args.dataset](), 
+        model_name=args.model, 
+        attack_name=args.attack, 
+        explainer_name=args.explainer,
+        metric=METRICS[args.metric](), 
+        seed = args.seed
+        )
 
     results_dir = Path("results")
     results_dir.mkdir(parents=True, exist_ok=True)
