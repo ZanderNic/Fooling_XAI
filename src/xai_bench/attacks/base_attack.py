@@ -29,10 +29,10 @@ class BaseAttack(ABC):
     Will calcualte L1 distance and return mean distance on dataset
     """
     @overload
-    def _prediction_distance(self, X:np.ndarray, X_adv:np.ndarray) -> float:
+    def _prediction_distance(self, X:np.ndarray, X_adv:np.ndarray) -> np.ndarray:
         pass
     @overload
-    def _prediction_distance(self, X:pd.DataFrame, X_adv:pd.DataFrame) -> float:
+    def _prediction_distance(self, X:pd.DataFrame, X_adv:pd.DataFrame) -> np.ndarray:
         pass
     def _prediction_distance(self, X, X_adv):
         if self.task == "classification":
@@ -41,4 +41,4 @@ class BaseAttack(ABC):
         else:
             p: np.ndarray = self.model.predict_scalar(X)
             p_adv: np.ndarray = self.model.predict_scalar(X_adv)
-        return np.abs(p - p_adv).mean()
+        return np.abs(p - p_adv)
