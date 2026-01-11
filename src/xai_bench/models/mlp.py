@@ -92,7 +92,7 @@ class TorchMLP(BaseModel):
 
         self.num_classes = num_classes
 
-    def fit(self, X, y) -> "TorchMLP":
+    def fit(self, X, y):
         Xn = _to_numpy(X)
         yn = _check_1d_vector(y)
 
@@ -133,24 +133,33 @@ class TorchMLP(BaseModel):
     def predict_proba(self, X) -> np.ndarray:
         if self.task != "classification":
             raise NotImplementedError("predict_proba is only defined for classification models.")
+        
         self.net.eval()
+        
         Xt = _to_torch(X, self.device)
         logits = self.net(Xt)  # (n, C)
         proba = F.softmax(logits, dim=1).detach().cpu().numpy()
+        
         if proba.ndim != 2:
             raise ValueError("predict_proba must return an array of shape (n, C)")
         if not np.allclose(proba.sum(axis=1), 1.0, atol=1e-6):
             raise ValueError("predict_proba rows must sum to 1.")
+        
         return proba
 
     @torch.no_grad()
     def predict_scalar(self, X) -> np.ndarray:
+        
         if self.task != "regression":
             raise NotImplementedError("predict_scalar is only defined for regression models.")
+        
         self.net.eval()
         Xt = _to_torch(X, self.device)
+        
         out = self.net(Xt).squeeze(1)  # (n,)
         pred = out.detach().cpu().numpy().astype(np.float64, copy=False)
+        
         if pred.ndim != 1:
             raise ValueError("predict_scalar must return 1D array of shape (n,)")
+        
         return pred
