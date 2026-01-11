@@ -24,6 +24,7 @@ class BaseAttack(ABC):
     Will recieve either ONE sample of shape (features,) or multiple samples of shape (n,features) to generate an attack on
     """
     def generate(self, x: np.ndarray,) -> np.ndarray:
+        x = np.asarray(x)
         if x.ndim == 2:
             return np.asarray([self._generate(s) for s in x])
         else:

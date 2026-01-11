@@ -11,7 +11,7 @@ class HeartDataset(BaseDataset):
         self.categorical_features = [
             "cp", "restecg", "slope", "thal", "sex"
         ]
-        self.numerical_features = ['age', 'sex', 'trestbps', 'chol', 'fbs', 'thalach', 'exang', 'oldpeak', 'ca']
+        self.numerical_features = ['age', 'trestbps', 'chol', 'fbs', 'thalach', 'exang', 'oldpeak', 'ca']
         self.target = "condition"
         self.task = "classification"
         

@@ -87,7 +87,6 @@ def load_explainer(
     if explainer_string == "Shap":
         return ShapAdapter(
             dataset = dataset,
-            num_samples = 5000,
             background_size= 5000,
             random_state= seed
         )
@@ -123,9 +122,10 @@ def load_attack(
     if attack_string == "ColumnSwitchAttack":
         attack =  ColumnSwitchAttack(
             model=model,
-            explainer=explainer,
-            metric=metric,
-            random_state=seed,
+            task= dataset.task
+            #explainer=explainer,
+            #metric=metric,
+            #random_state=seed,
         )
         
         attack.fit(dataset=dataset, n_switches=30, max_tries=42)
