@@ -11,6 +11,7 @@ class HeartDataset(BaseDataset):
         self.categorical_features = [
             "cp", "restecg", "slope", "thal"
         ]
+        self.numerical_features = ['age', 'sex', 'trestbps', 'chol', 'fbs', 'thalach', 'exang', 'oldpeak', 'ca']
         self.target = "condition"
         super().__init__(path, **kwargs)
 
@@ -23,6 +24,7 @@ class HeartDataset(BaseDataset):
             print(f"Downloaded heart-disease-cleveland-uci dataset to {path}")
             self.path = Path(path)
         self.df_raw = pd.read_csv(self.path)
+
         return self.df_raw
 
     def preprocess(self) -> pd.DataFrame:

@@ -3,6 +3,8 @@ import numpy as np
 from abc import ABC, abstractmethod
 from typing import Dict, List, Tuple, Optional, Union
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
 from xai_bench.explainer.base_explainer import Features
 from pathlib import Path
 
@@ -32,8 +34,8 @@ class BaseDataset(ABC):
         self.feature_mapping: Dict[str, List[str]] = {}
         self.feature_ranges: Dict[str, Tuple[float, float]] = {}
 
-        self.numerical_features: Optional[List[str]]
         self.categorical_features: Optional[List[str]] # from heart datasets
+        self.numerical_features: Optional[List[str]]
 
         self._load_and_prepare()
 
@@ -62,6 +64,28 @@ class BaseDataset(ABC):
             random_state=self.random_state,
             stratify=y if self.stratify else None
         )
+
+        self.scaler = StandardScaler()
+        X_train_scaled = self.scaler.fit_transform(self.X_train[self.numerical_features])
+        X_test_scaled = self.scaler.transform(self.X_test[self.numerical_features])
+
+        one_hot_cols = sum(self.feature_mapping.values(), [])  
+
+        self.X_train_scaled = pd.concat(
+            [
+                pd.DataFrame(X_train_scaled, columns=self.numerical_features, index=self.X_train.index),
+                self.X_train[one_hot_cols].copy() 
+            ],
+            axis=1
+        )
+        self.X_test_scaled = pd.concat(
+            [
+                pd.DataFrame(X_test_scaled, columns=self.numerical_features, index=self.X_test.index),
+                self.X_test[one_hot_cols].copy()  
+            ],
+            axis=1
+        )
+
 
         self.features = Features(list(self.X_full.columns))
         self.feature_ranges = {col: (self.X_train[col].min(), self.X_train[col].max())
