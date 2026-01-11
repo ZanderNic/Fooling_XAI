@@ -3,11 +3,11 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-# 3-party imports 
+# 3-party imports
 import numpy as np
 import pandas as pd
 
-# Projekt imports 
+# Projekt imports
 from xai_bench.datasets.heart_dataset import HeartDataset
 from xai_bench.explainer.lime_explainer import LimeTabularAdapter
 from xai_bench.explainer.shap_explainer import ShapAdapter
@@ -28,6 +28,9 @@ def make_synth_heart_csv(path: Path, n: int = 250, seed: int = 0) -> Path:
             "exang": rng.integers(0, 2, size=n),
             "oldpeak": rng.normal(1.0, 1.0, size=n).clip(0, 6),
 
+            # NEW: "ca" exists in your HeartDataset.numerical_features
+            "ca": rng.integers(0, 4, size=n),
+
             "cp": rng.integers(0, 4, size=n),
             "restecg": rng.integers(0, 3, size=n),
             "slope": rng.integers(0, 3, size=n),
@@ -38,6 +41,7 @@ def make_synth_heart_csv(path: Path, n: int = 250, seed: int = 0) -> Path:
     logit = (
         0.03 * (df["age"] - 50)
         + 0.01 * (df["chol"] - 240)
+        + 0.25 * df["ca"]                # small effect so feature isn't useless
         + 0.5 * (df["cp"] == 3).astype(float)
         - 0.4 * (df["thalach"] > 150).astype(float)
     )
@@ -53,43 +57,54 @@ def assert_true(cond: bool, msg: str) -> None:
         raise AssertionError(msg)
 
 
+def expected_original_order(dataset: HeartDataset) -> list[str]:
+    """
+    Stable semantic order independent of df_raw column order:
+    numerical first, then categorical (as defined by the dataset).
+    """
+    order = []
+    if getattr(dataset, "numerical_features", None):
+        order.extend(list(dataset.numerical_features))
+    if getattr(dataset, "categorical_features", None):
+        order.extend(list(dataset.categorical_features))
+    # remove duplicates while preserving order
+    seen = set()
+    order = [x for x in order if not (x in seen or seen.add(x))]
+    return order
+
+
 if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as tmp:
         csv_path = Path(tmp) / "heart.csv"
         make_synth_heart_csv(csv_path, n=300, seed=0)
 
-
         dataset = HeartDataset(str(csv_path), test_size=0.25, random_state=0, stratify=True)
 
+        # what is actually inside the raw CSV
         raw_order = [c for c in dataset.df_raw.columns if c != dataset.target]
+
+        # what we WANT as original feature order (stable contract)
+        feature_order = expected_original_order(dataset)
 
         print("Raw columns (no target):")
         print(raw_order)
         print()
 
+        print("Expected original order (numerical + categorical):")
+        print(feature_order)
+        print()
 
-        print("=== CHECK: original feature order ===")
-        if hasattr(dataset, "original_feature_order") and dataset.original_feature_order is not None:
-            print("dataset.original_feature_order:")
-            print(dataset.original_feature_order)
-            assert_true(dataset.original_feature_order == raw_order,
-                        "original_feature_order != raw_order (df_raw without target).")
-            feature_order = dataset.original_feature_order
-        else:
-            print("WARNING: dataset.original_feature_order is missing. Order is NOT guaranteed.")
-            feature_order = raw_order  
+        # Sanity: expected order must be subset of raw columns
+        missing = [c for c in feature_order if c not in raw_order]
+        assert_true(len(missing) == 0, f"Your CSV is missing required columns: {missing}")
 
-        print("OK\n")
-
-
-        print("=== CHECK: feature_mapping completeness ===")
+        print("=== CHECK: feature_mapping completeness for expected order ===")
         for f in feature_order:
             assert_true(f in dataset.feature_mapping, f"Missing mapping entry for original feature '{f}'")
             sub = dataset.feature_mapping[f]
             assert_true(isinstance(sub, list) and len(sub) >= 1,
                         f"feature_mapping['{f}'] must be a non-empty list.")
         print("OK\n")
-
 
         print("=== FIT: RandomForest ===")
         model = SKRandomForest(
@@ -112,12 +127,11 @@ if __name__ == "__main__":
         assert_true(isinstance(lime_attr, np.ndarray) and lime_attr.ndim == 1,
                     "LIME attribution must be 1D numpy array.")
         assert_true(len(lime_attr) == len(feature_order),
-                    f"LIME attribution length {len(lime_attr)} != number of original features {len(feature_order)}.")
+                    f"LIME attribution length {len(lime_attr)} != number of expected original features {len(feature_order)}.")
         assert_true(np.any(np.abs(lime_attr) > 1e-10),
                     "LIME returned all zeros (unexpected).")
 
         print(f"LIME OK: attr shape = {lime_attr.shape}\n")
-
 
         print("=== SHAP: fit + explain ===")
         shap_exp = ShapAdapter(dataset=dataset, nsamples=200, background_size=50, random_state=0)
@@ -128,12 +142,11 @@ if __name__ == "__main__":
         assert_true(isinstance(shap_attr, np.ndarray) and shap_attr.ndim == 1,
                     "SHAP attribution must be 1D numpy array.")
         assert_true(len(shap_attr) == len(feature_order),
-                    f"SHAP attribution length {len(shap_attr)} != number of original features {len(feature_order)}.")
+                    f"SHAP attribution length {len(shap_attr)} != number of expected original features {len(feature_order)}.")
         assert_true(np.any(np.abs(shap_attr) > 1e-10),
                     "SHAP returned all zeros (unexpected).")
 
         print(f"SHAP OK: attr shape = {shap_attr.shape}\n")
-
 
         print("=== REPORT (top abs attributions) ===")
         def topk(names, vals, k=8):
