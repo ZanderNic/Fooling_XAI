@@ -72,31 +72,53 @@ class BaseDataset(ABC):
             stratify=y if self.stratify else None
         )
 
+        # scale numerical features
         self.scaler = StandardScaler()
         X_train_scaled = self.scaler.fit_transform(self.X_train[self.numerical_features])
         X_test_scaled = self.scaler.transform(self.X_test[self.numerical_features])
 
-        one_hot_cols = sum(self.feature_mapping.values(), [])  
-
-        self.X_train_scaled = pd.concat(
-            [
-                pd.DataFrame(X_train_scaled, columns=self.numerical_features, index=self.X_train.index),
-                self.X_train[one_hot_cols].copy() 
-            ],
-            axis=1
-        )
-        self.X_test_scaled = pd.concat(
-            [
-                pd.DataFrame(X_test_scaled, columns=self.numerical_features, index=self.X_test.index),
-                self.X_test[one_hot_cols].copy()  
-            ],
-            axis=1
-        )
-
+        self.X_train_scaled = pd.concat([
+            pd.DataFrame(
+                X_train_scaled,
+                columns=self.numerical_features, 
+                index=self.X_train.index
+            ),
+            self.X_train.drop(self.numerical_features, axis=1)
+        ], axis=1)
+        self.X_test_scaled = pd.concat([
+            pd.DataFrame(
+                X_test_scaled,
+                columns=self.numerical_features,
+                index=self.X_test.index
+            ),
+            self.X_test.drop(self.numerical_features, axis=1)
+        ], axis=1)
 
         self.features = Features(list(self.X_full.columns))
-        self.feature_ranges = {col: (self.X_train[col].min(), self.X_train[col].max())
-                           for col in self.X_train.columns}
+        # determine scaled and unscaled feature ranges
+        self.feature_ranges = {
+            col: (self.X_train[col].min(), self.X_train[col].max()) for col in self.X_train.columns
+        }
+        self.scaled_feature_ranges = {
+            col: (self.X_train_scaled[col].min(), self.X_train_scaled[col].max()) for col in self.X_train.columns
+        }
+
+        # determine scaled and unscaled categorical values
+        self.categorical_values = {
+            col: self.X_train[col].unique() if col not in self.numerical_features else None
+            for col in self.X_train.columns
+        }
+        self.scaled_categorical_values = {
+            col: self.X_train_scaled[col].unique() if col not in self.numerical_features else None
+            for col in self.X_train.columns
+        }
+
+        # produce a list mask for categorical features
+        self.categorical_feature_mask = [
+            True if feature not in self.numerical_features else 
+            False 
+            for feature in self.features.feature_names_model
+        ]
 
     def one_hot_encode_with_mapping(
         self,
