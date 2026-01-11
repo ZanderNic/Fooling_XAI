@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 from xai_bench.base import BaseAttack, BaseDataset, BaseModel
+from typing import Literal
 
 
 class DistributionShiftAttack(BaseAttack):
@@ -11,9 +12,11 @@ class DistributionShiftAttack(BaseAttack):
         model: BaseModel,
         epsilon: float = 0.1,
         max_tries: int = 100,
-        prob_tolerance: float = 0.01
+        prob_tolerance: float = 0.01,
+        task:Literal["classification","regression"]="classification",
     ):
-        super().__init__(model)
+        assert task == "classification", "only classification is supported"
+        super().__init__(model,task=task)
         self.dataset = dataset
         self.model = model
         self.epsilon = epsilon
@@ -22,17 +25,11 @@ class DistributionShiftAttack(BaseAttack):
 
         self.feature_ranges = self.dataset.feature_ranges
         self.protected_features = self.dataset.categorical_features
-
-    def _prediction_distance(self, x, x_adv):
-        p = self.model.predict_proba(pd.DataFrame([x]))[0]
-        p_adv = self.model.predict_proba(pd.DataFrame([x_adv]))[0]
-        return np.abs(p - p_adv).max()
     
     def _shift_feature(self, x, feature):
         x_new = x.copy()
         f_min, f_max = self.feature_ranges[feature]
         span = f_max - f_min
-
         shift = np.random.uniform(-self.epsilon, self.epsilon) * span
         x_new[feature] = np.clip(x[feature] + shift, f_min, f_max)
         return x_new

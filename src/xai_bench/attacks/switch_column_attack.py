@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from typing import Optional, Literal, Union, Any
+from typing import Optional, Literal, Union, Any, overload
 from itertools import permutations
 import math
 
@@ -17,28 +17,22 @@ class ColumnSwitchAttack(BaseAttack):
     max_tries: If not none, pick randomly from permutations until max_tries is reached (with possible repeats). Usefull if n_switches is high, as number of combinations is (n_switches)!
     """
     def __init__(self, model:BaseModel, task: Literal["classification","regression"], dataset:Optional[BaseDataset]= None, n_switches:Optional[int]=None, max_tries:Optional[int]=None):
-        self.task: Literal["classification","regression"] = task
-        super().__init__(model)
+        super().__init__(model, task=task)
         self.top_combi: Optional[list] = None
         # directly fit if all parameters are given
         if dataset is not None and n_switches is not None:
             _ = self.fit(dataset=dataset,n_switches=n_switches,max_tries=max_tries)
-        
-
-    # will predict on model and return mse between predictions
-    def _prediction_distance(self, x, x_adv):
-        if self.task == "classification":
-            p: np.ndarray = self.model.predict_proba(pd.DataFrame([x]))
-            p_adv: np.ndarray = self.model.predict_proba(pd.DataFrame([x_adv]))
-        else:
-            p: np.ndarray = self.model.predict_scalar(pd.DataFrame([x]))
-            p_adv: np.ndarray = self.model.predict_scalar(pd.DataFrame([x_adv]))
-        return np.square(p - p_adv).mean()
     
     """
     will create new adv data by switching columns according to given combi of indices
     """
-    def _switch_columns(self, X_train:Union[pd.DataFrame,np.ndarray], combi:np.ndarray) -> Union[pd.DataFrame,np.ndarray]:
+    @overload
+    def _switch_columns(self, X_train:pd.DataFrame, combi:np.ndarray) -> pd.DataFrame:
+        pass
+    @overload
+    def _switch_columns(self, X_train:np.ndarray, combi:np.ndarray) -> np.ndarray:
+        pass
+    def _switch_columns(self, X_train, combi:np.ndarray):
         x_adv = X_train.copy()
         if isinstance(x_adv,pd.DataFrame):
             # is whoel dataframe
@@ -68,9 +62,9 @@ class ColumnSwitchAttack(BaseAttack):
     """
     def _evaluate(self,X_train:pd.DataFrame, combi:np.ndarray) -> float:
         x_adv = self._switch_columns(X_train,combi)
-        mse = self._prediction_distance(X_train,x_adv)
+        l1 = self._prediction_distance(X_train,x_adv)
         del x_adv
-        return mse
+        return l1
 
     """
     Will determine best (numerical) column switches bsed on n_switches and 
@@ -85,7 +79,7 @@ class ColumnSwitchAttack(BaseAttack):
         if dataset.numerical_features is None:
             raise ValueError(f"This dataset ({dataset}) has the numerical_features attribute not set, which is needed for a ColumnSwitchAttack!")
         assert dataset.features, "Dataset needs features"
-        feature_indexes = [dataset.features.feature_names_model.index(f) for f in dataset.numerical_features]
+        feature_indexes = [dataset.features.feature_names_model.index(f) for f in dataset.numerical_features] # TODO: get from feature mapping
 
         top_score = np.inf
         top_combi = []  # combi means lsit in index with data switching to the right. E.g. [1,4,6] would result in 1->4->6->1, so column 1 now has data from column 6, column 4 has now date from column 1 and column 6 has now data from column 4.
