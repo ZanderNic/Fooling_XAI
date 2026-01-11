@@ -76,4 +76,4 @@ if __name__ == "__main__":
 
     print(args)
 
-    run(dataset=DATASETS[args.dataset], model=args.model, attack=args.attack, explainer=args.explainer,metric=METRICS[args.metric])
+    run(dataset=DATASETS[args.dataset](), model=args.model, attack=args.attack, explainer=args.explainer,metric=METRICS[args.metric]())
