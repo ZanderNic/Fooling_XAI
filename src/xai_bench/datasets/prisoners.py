@@ -1,15 +1,12 @@
-# Dataset Give me some credit 
 import pandas as pd
-
-
 from xai_bench.datasets.base_dataset import BaseDataset
 
 
-class CreditDataset(BaseDataset):
+class Prisoneres(BaseDataset):
     def __init__(self, path: str, **kwargs):
-        self.categorical_features = []
-        self.numerical_features = ['RevolvingUtilizationOfUnsecuredLines', 'age', 'NumberOfTime30-59DaysPastDueNotWorse', 'DebtRatio', 'MonthlyIncome', 'NumberOfDependents', 'CombinedDefaulted', 'CombinedCreditLoans']
-        self.target = "SeriousDlqin2yrs"
+        self.categorical_features = ['race']
+        self.numerical_features = ['age', 'sex', 'decile_score', 'priors_count', 'days_in_jail', 'c_days_from_compas', 'is_violent_recid', 'v_decile_score']
+        self.target = "is_recid"
         super().__init__(path, **kwargs)
 
     def read(self) -> pd.DataFrame:
@@ -18,13 +15,13 @@ class CreditDataset(BaseDataset):
 
     def preprocess(self) -> pd.DataFrame:
         df = self.df_raw.copy()
-
+        
         self.y_full = df[self.target]
-        print(self.y_full.isna().sum())
         X = df.drop(columns=[self.target])
-        X = X.astype(float)
 
         X = self.one_hot_encode_with_mapping(X, self.categorical_features)
+
+        X = X.astype(float)
 
         for col in X.columns:
             if col not in sum(self.feature_mapping.values(), []):
@@ -33,13 +30,17 @@ class CreditDataset(BaseDataset):
         self.X_full = X.astype(float)
         return self.X_full
     
-# The dataset comes from a Kaggle competition to prevent training models on the test dataset. 
-# There are no labels. Therefore, only the Train dataset is used.
 
 if __name__ == "__main__":
     import os
-    path = r"src/xai_bench/datasets/cs-training_clean.csv"
-    dataset = CreditDataset(path)
+    #path = os.path.join("datasets", "heart.csv")
+    path = "src/xai_bench/datasets/compas_recidivism_racial_bias.csv"
+
+
+    df = pd.read_csv(path)
+    from sklearn.preprocessing import LabelEncoder
+
+    dataset = Prisoneres(path)
 
     print("Raw data shape:", dataset.df_raw.values.shape)
     print("X_train shape:", dataset.X_train.shape)
@@ -48,4 +49,6 @@ if __name__ == "__main__":
     print("Orignial columns:", dataset.df_raw.columns)
     print("Column mapping:", dataset.feature_mapping)
 
+    
 
+    
