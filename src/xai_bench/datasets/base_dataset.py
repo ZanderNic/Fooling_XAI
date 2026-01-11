@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple, Optional, Union, Literal
+from typing import Dict, List, Tuple, Optional, Union, Literal, cast
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
@@ -22,6 +22,8 @@ class BaseDataset(ABC):
         self.stratify = stratify
         self.task: Optional[Literal["classification","regression"]] = None
 
+        self.classes: Optional[list] = None
+        self.num_classes: Optional[int] = None
         self.df_raw: Optional[pd.DataFrame] = None
         self.X_full: Optional[pd.DataFrame]= None
         self.y_full: Optional[pd.Series] = None
@@ -57,6 +59,10 @@ class BaseDataset(ABC):
         assert self.X_full is not None and self.y_full is not None, "Dataset not processed."
         X = self.X_full
         y = self.y_full
+
+        # set class counts
+        self.classes = cast(list,y.unique().tolist())
+        self.num_classes = len(self.classes)
 
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
             X,
