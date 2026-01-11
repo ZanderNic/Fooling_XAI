@@ -37,7 +37,7 @@ class DistributionShiftAttack(BaseAttack):
     def fit(self) -> None:
         pass 
 
-    def generate(self, x: np.ndarray) -> np.ndarray:
+    def _generate(self, x: np.ndarray) -> np.ndarray:
         x_adv = x.copy()
         candidates = [
             f for f in x.index

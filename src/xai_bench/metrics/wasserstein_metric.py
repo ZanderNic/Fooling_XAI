@@ -1,31 +1,39 @@
 import numpy as np
-from scipy.stats import wasserstein_distance
 
 from xai_bench.metrics.base_metric import BaseMetric
+from xai_bench.metrics.explanation_normalizer import ExplanationNormalizer
 
 
 class WassersteinMetric(BaseMetric):
-    def __init__(self):
+    """
+    Wasserstein distance (Earth Mover's Distance) between explanation vectors.
+
+    This metric treats the explanation vectors as discrete distributions and
+    computes the cumulative distribution difference. The vectors are optionally
+    normalized (default L1) to sum to 1.
+
+    Parameters
+    ----------
+    normalization_mode : str, default="l1"
+        Normalization mode applied to the explanation vectors. Default "l1" makes
+        vectors sum to 1 so that Wasserstein measures relative redistribution.
+
+    Methods
+    -------
+    compute(e1: np.ndarray, e2: np.ndarray) -> float
+        Returns the Wasserstein distance between the two explanation vectors.
+    """
+    def __init__(self, normalization_mode="l1"):
         super().__init__("wasserstein")
-
-    def _wd(self, a: np.ndarray, b: np.ndarray) -> float:
-        if a.sum() <= 0 or b.sum() <= 0:
-            return 0.0
-
-        a = a / a.sum()
-        b = b / b.sum()
-
-        positions = np.arange(len(a))
-        return wasserstein_distance(positions, positions, a, b)
+        self.normalizer = ExplanationNormalizer(normalization_mode)
 
     def compute(self, e1: np.ndarray, e2: np.ndarray) -> float:
-        p1 = np.clip(e1, 0, None)
-        p2 = np.clip(e2, 0, None)
-
-        n1 = np.clip(-e1, 0, None)
-        n2 = np.clip(-e2, 0, None)
-
-        return self._wd(p1, p2) + self._wd(n1, n2)
+        e1 = self.normalizer(e1)
+        e2 = self.normalizer(e2)
+        c1 = np.cumsum(e1)
+        c2 = np.cumsum(e2)
+        d = np.sum(np.abs(c1 - c2))
+        return d / len(e1)
     
 
 if __name__ == "__main__":

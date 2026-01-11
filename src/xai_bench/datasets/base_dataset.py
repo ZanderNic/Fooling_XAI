@@ -5,7 +5,7 @@ from typing import Dict, List, Tuple, Optional, Union, Literal, cast
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-from xai_bench.explainer.base_explainer import Features
+from xai_bench.explainer.base_explainer import Features, Explanation
 from pathlib import Path
 
 class BaseDataset(ABC):
@@ -118,15 +118,17 @@ class BaseDataset(ABC):
         self.feature_mapping.update(mapping)
         return df
 
-    def explanation_to_array(self, explanation, target=None, feature_order=None):
+    def explanation_to_array(
+        self,
+        explanation: Explanation,
+        feature_order=None
+    ) -> np.ndarray:
         feature_order = feature_order or list(self.feature_mapping.keys())
 
-        # For Lime
-        if hasattr(explanation, "as_list"):
-            exp_dict = dict(explanation.as_list(label=target))
-        # For Shap
-        elif hasattr(explanation, "values") and hasattr(explanation, "feature_names"):
-            exp_dict = dict(zip(explanation.feature_names, explanation.values))
+        # extract explanation values into a dict
+        if isinstance(explanation, Explanation) or \
+            (hasattr(explanation, 'values') and hasattr(explanation, 'feature_names')):
+            exp_dict = dict(zip(explanation.feature_names, explanation.values.T))
         else:
             raise ValueError("Unsupported explanation type")
 
@@ -136,7 +138,7 @@ class BaseDataset(ABC):
             importance = sum(exp_dict.get(sf, 0.0) for sf in sub_features)
             arr.append(importance)
 
-        return np.array(arr)
+        return np.array(arr).T
 
     def get_feature_mapping(self) -> Dict[str, List[str]]:
         return self.feature_mapping

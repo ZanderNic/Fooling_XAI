@@ -9,7 +9,7 @@ from xai_bench.datasets.base_dataset import BaseDataset
 class HeartDataset(BaseDataset):
     def __init__(self, path: Union[str, Path] = None, **kwargs):   
         self.categorical_features = [
-            "cp", "restecg", "slope", "thal"
+            "cp", "restecg", "slope", "thal", "sex"
         ]
         self.numerical_features = ['age', 'sex', 'trestbps', 'chol', 'fbs', 'thalach', 'exang', 'oldpeak', 'ca']
         self.target = "condition"

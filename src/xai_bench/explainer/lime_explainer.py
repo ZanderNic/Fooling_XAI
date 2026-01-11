@@ -5,11 +5,12 @@ import time
 
 # 3-party imports 
 import numpy as np
-import lime.lime_tabular 
+import lime.lime_tabular
+import shap 
 
 # projekt imports
 from xai_bench.models.base_model import BaseModel
-from xai_bench.explainer.base_explainer import BaseExplainer, Features
+from xai_bench.explainer.base_explainer import BaseExplainer, Features, Explanation
 from xai_bench.datasets.base_dataset import BaseDataset
 
 
@@ -97,8 +98,7 @@ class LimeTabularAdapter(BaseExplainer):
 
     def explain(
         self, 
-        x: np.ndarray, 
-        target: Optional[int] = None
+        X: np.ndarray,
     ) -> np.ndarray:
         """
             Compute a local LIME explanation for a single input sample.
@@ -137,24 +137,34 @@ class LimeTabularAdapter(BaseExplainer):
                     If the explainer has not been initialized via `fit()`.
         """
         assert self._lime is not None, "Call fit() first."
-        x = x.reshape(-1)
+
+        model_prediction = self.model.predict(X)
 
         if self.model.task == "classification":
-            if target is None:
-                raise ValueError("For classification, `target` must be provided.")
-            exp = self._lime.explain_instance(
+            exps = [self._lime.explain_instance(
                 data_row=x,
                 predict_fn=self.model.predict_proba,
-                labels=[target], #??? should be either none or list of all classes that should be explained or top-k
-                num_features=len(x),
+                labels=self.dataset.classes,
+                num_features=x.shape[0],
                 num_samples=self.num_samples
-            )
+            ) for x in X]
         else:  # regression
-            exp = self._lime.explain_instance(
+            exp = [self._lime.explain_instance(
                 data_row=x,
                 predict_fn=self.model.predict_scalar,
-                num_features=len(x),
+                num_features=x.shape[0],
                 num_samples=self.num_samples
-            )
+            ) for x in X]
 
-        return self.dataset.explanation_to_array(exp, target=target)
+        exp_values = []
+        for i, exp in enumerate(exps):
+            exp_values.append(list(dict(exp.as_list(model_prediction[i])).values()))
+        exp_values = np.array(exp_values)
+
+        # construct explanation object for compatibility with the dataset method
+        explanation_object = Explanation(
+            values=exp_values,
+            feature_names=self.features.feature_names_model
+        )
+
+        return self.dataset.explanation_to_array(explanation_object)

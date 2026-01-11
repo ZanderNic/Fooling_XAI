@@ -5,6 +5,8 @@ from xai_bench.base import BaseModel
 from typing import Literal, overload
 from numbers import Number
 import pandas as pd
+from jaxtyping import Shaped
+
 
 class BaseAttack(ABC):
     def __init__(self, model: BaseModel, task: Literal["classification","regression"]):
@@ -19,10 +21,16 @@ class BaseAttack(ABC):
         pass
 
     """
-    Will recieve ONE sample to generate an attack on
+    Will recieve either ONE sample of shape (features,) or multiple samples of shape (n,features) to generate an attack on
     """
+    def generate(self, x: np.ndarray,) -> np.ndarray:
+        if x.ndim == 2:
+            return np.asarray([self._generate(s) for s in x])
+        else:
+            return self._generate(x)
+
     @abstractmethod
-    def generate(self, x: np.ndarray) -> np.ndarray:
+    def _generate(self, x) -> np.ndarray:
         pass
 
     """
