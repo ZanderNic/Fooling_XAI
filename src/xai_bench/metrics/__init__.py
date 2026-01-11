@@ -1,0 +1,3 @@
+from cosine_metric import CosineMetric
+from spearmen_metric import SpearmanMetric
+from wasserstein_metric import WassersteinMetric

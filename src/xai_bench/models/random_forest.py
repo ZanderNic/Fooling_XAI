@@ -76,7 +76,6 @@ class SKRandomForest(BaseModel):
             self.model = RandomForestClassifier(**self._rf_kwargs)
         else:
             self.model = RandomForestRegressor(**self._rf_kwargs)
-
         self.model.fit(Xn, yn)
         return self
 

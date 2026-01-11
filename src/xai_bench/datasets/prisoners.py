@@ -2,7 +2,7 @@ import pandas as pd
 from xai_bench.datasets.base_dataset import BaseDataset
 
 
-class Prisoneres(BaseDataset):
+class PrisoneresDataset(BaseDataset):
     def __init__(self, path: str, **kwargs):
         self.categorical_features = ['race']
         self.numerical_features = ['age', 'sex', 'decile_score', 'priors_count', 'days_in_jail', 'c_days_from_compas', 'is_violent_recid', 'v_decile_score']
