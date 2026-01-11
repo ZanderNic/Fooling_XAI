@@ -1,0 +1,2 @@
+from xai_bench.attacks.distribution_shift_attack import DistributionShiftAttack
+from xai_bench.attacks.switch_column_attack import ColumnSwitchAttack
