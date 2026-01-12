@@ -33,7 +33,7 @@ from xai_bench.base import BaseDataset, BaseMetric
 from xai_bench.datasets.credit_dataset import CreditDataset
 from xai_bench.datasets.heart_dataset import HeartDataset
 from xai_bench.datasets.heart_failure import Heart_Failure
-from xai_bench.datasets.prisoners import PrisoneresDataset
+from xai_bench.datasets.prisoners import PrisonersDataset
 
 # metrics
 from xai_bench.metrics.cosine_metric import CosineMetric
@@ -54,7 +54,7 @@ DATASETS = {
     "heart-uci": HeartDataset,
     "heart-failure": Heart_Failure,
     "credit": CreditDataset,
-    "prisoners": PrisoneresDataset,
+    "prisoners": PrisonersDataset,
 }
 
 METRICS = {
@@ -64,7 +64,7 @@ METRICS = {
 }
 
 MODELS = ["CNN1D", "MLP", "RF"]
-ATTACKS = ["DistributionShiftAttack", "ColumnSwitchAttack"]
+ATTACKS = ["DistributionShiftAttack", "ColumnSwitchAttack", "DataPoisoningAttack"]
 EXPLAINER = ["Shap", "Lime"]
 
 

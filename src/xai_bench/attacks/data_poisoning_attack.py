@@ -1501,7 +1501,7 @@ class DataPoisoningAttack(BaseAttack):
     def generate(
         self,
         x: np.ndarray,
-        scaled: bool = True
+        scaled: bool = False
     ):
         """
         Generates poisoned data by applying gaussian white noise with the learned standard

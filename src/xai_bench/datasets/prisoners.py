@@ -2,7 +2,7 @@ import pandas as pd
 from xai_bench.datasets.base_dataset import BaseDataset
 
 
-class PrisoneresDataset(BaseDataset):
+class PrisonersDataset(BaseDataset):
     def __init__(self, path: str, **kwargs):
         self.categorical_features = ['race']
         self.numerical_features = ['age', 'sex', 'decile_score', 'priors_count', 'days_in_jail', 'c_days_from_compas', 'is_violent_recid', 'v_decile_score']
@@ -33,15 +33,12 @@ class PrisoneresDataset(BaseDataset):
     
 
 if __name__ == "__main__":
-    import os
-    #path = os.path.join("datasets", "heart.csv")
     path = "src/xai_bench/datasets/compas_recidivism_racial_bias.csv"
 
 
     df = pd.read_csv(path)
-    from sklearn.preprocessing import LabelEncoder
 
-    dataset = Prisoneres(path)
+    dataset = PrisonersDataset(path)
 
     print("Raw data shape:", dataset.df_raw.values.shape)
     print("X_train shape:", dataset.X_train.shape)

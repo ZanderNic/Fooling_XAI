@@ -2,7 +2,7 @@
 from __future__ import annotations
 import json
 import time
-from dataclasses import  dataclass
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
@@ -126,6 +126,30 @@ def load_attack(
         )
         
         attack.fit(dataset=dataset, n_switches=5, max_tries=10000, numerical_only=True)
+        return attack
+    
+    if attack_string == "DataPoisoningAttack":
+        from xai_bench.attacks.data_poisoning_attack import DataPoisoningAttack
+        attack =  DataPoisoningAttack(
+            dataset=dataset,
+            model=model,
+            task= dataset.task
+        )
+        
+        attack.fit(
+            explainer=explainer,
+            N_GEN=100,
+            N_POP=20,
+            N_SAMPLE=10,
+            INIT_MUTATION_RATE=1.0,
+            INIT_STD=0.1,
+            P_ELITE=0.05,
+            P_COMBINE=0.1,
+            DRIFT_THRESHOLD=0.1,
+            DRIFT_CONFIDENCE=0.95,
+            EARLY_STOPPING_PATIENCE=7,
+        )
+
         return attack
 
     raise ValueError(f"Unknown attack type: {attack_string}")
