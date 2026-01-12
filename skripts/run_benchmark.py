@@ -133,27 +133,34 @@ def run(
     else:
         X_test = dataset.X_test.sample(n=num_samples)
 
-    # we need to compare the distance of the real explaination and the attacked one
 
     with console.status(f"{TC} Generate attack", spinner="shark"):
         X_adv, t_generate = timed_call(attack.generate, X_test)
     console.print(f"{RUN_TEXT} Generated Attack")
 
+    with console.status(f"{TC} Calculating attack accuracy  ", spinner="shark"):
+        predict_accuracy  = accuracy_score(
+            dataset.y_test.values, model.predict(X_adv)
+        )
+    console.print(f"{RUN_TEXT} Calculated attack accuracy")
+
     # generate explanation for real dataset X_test and X_adv
     with console.status(f"{TC} Explaining real X", spinner="shark"):
         x_real_exp = explainer.explain(np.asarray(X_test))
+        
     with console.status(f"{TC} Explaining adverserial X", spinner="shark"):
         x_adv_exp = explainer.explain(X_adv)
     console.print(f"{RUN_TEXT} All X explained")
 
-    scores: Dict[str, dict] = {}
+    explain_scores: Dict[str, dict] = {}
     for name, MetricCls in track(
-        METRICS.items(), description="Caluclating metrics", transient=True
+        METRICS.items(), description="Caluclating Explaination scores", transient=True
     ):
         m: BaseMetric = MetricCls()
         s = m.compute(x_real_exp, x_adv_exp)
-        scores[name] = {"mean": float(s.mean()), "std": float(s.std())}
-    console.print(f"{RUN_TEXT} All metrics calculated")
+        explain_scores[name] = {"mean": float(s.mean()), "std": float(s.std())}
+    console.print(f"{RUN_TEXT} All explaination scores calcualted")
+
 
     result = {
         "meta": {
@@ -166,10 +173,11 @@ def run(
             "explainer": explainer.__class__.__name__,
             "selected_metric_for_attack": metric.__class__.__name__,
             "num_samples": int(len(X_test)),
-            "accuracy": acc,
+            "accuracy": acc, # accuracy of model prediction on X test
+            "attack_accuracy": predict_accuracy  # acucracy of model preduction on attacked X test
         },
         "timing": {"attack_generate": asdict(t_generate), "attack_fit": asdict(t_fit)},
-        "scores": scores,
+        "explain_scores": explain_scores,
     }
 
     return result
@@ -192,7 +200,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    console.print("[#69db88]\[RUN][/#69db88] Starting new run with: ", args)
+    console.print(f"[#69db88]\[RUN][/#69db88]{TC}Starting new run with: [/]", args)
     result = run(
         dataset=DATASETS[args.dataset](),
         model_name=args.model,
@@ -219,4 +227,4 @@ if __name__ == "__main__":
     with out_path.open("w", encoding="utf-8") as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
 
-    print(f"[OK] Results saved to: {out_path}")
+    console.print(f"[bold cyan]\[OK][/] Results saved to: [italic #9c9c9c]{out_path}[/]",highlight=False)
