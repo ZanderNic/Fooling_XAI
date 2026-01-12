@@ -5,7 +5,8 @@ from itertools import permutations
 import math
 
 from xai_bench.base import BaseModel, BaseDataset, BaseAttack
-from tqdm.rich import tqdm, trange
+from rich.progress import Progress, TextColumn, BarColumn, TimeElapsedColumn, TimeRemainingColumn
+from xai_bench.console import console
 
 class ColumnSwitchAttack(BaseAttack):
     """
@@ -53,7 +54,7 @@ class ColumnSwitchAttack(BaseAttack):
     """
     Will switch given combi columns and then let model predict (needs already to be trained)
     """
-    def _evaluate(self,X_train:pd.DataFrame, combi:np.ndarray) -> float:
+    def _evaluate(self,X_train:pd.DataFrame, combi:np.ndarray) -> np.ndarray:
         x_adv = self._switch_columns(X_train,combi)
         l1 = self._prediction_distance(X_train,x_adv)
         del x_adv
@@ -69,6 +70,7 @@ class ColumnSwitchAttack(BaseAttack):
     def fit(self, dataset:BaseDataset, n_switches:int, max_tries:Optional[int]=None):
         assert dataset.X_train is not None and dataset.y_train is not None, "Dataset needs to be loaded"
         assert n_switches>=2, "One is not an option"
+        assert n_switches<=len(dataset.X_train.columns), "Cant switch more columns than the dataset has"
         if dataset.numerical_features is None:
             raise ValueError(f"This dataset ({dataset}) has the numerical_features attribute not set, which is needed for a ColumnSwitchAttack!")
         assert dataset.features, "Dataset needs features"
@@ -77,34 +79,51 @@ class ColumnSwitchAttack(BaseAttack):
         top_score = np.inf
         top_combi = []  # combi means lsit in index with data switching to the right. E.g. [1,4,6] would result in 1->4->6->1, so column 1 now has data from column 6, column 4 has now date from column 1 and column 6 has now data from column 4.
                         # So a combi of just two columns will jsut switch (and [1,0] is the same as [0,1]. This does not apply to n>2)
-        tbar = tqdm(unit="tries")
-        tbar.postfix = "Top Combi: []"
-        if max_tries is not None:
-            tbar.total = max_tries
-            tbar.desc = "[CSA] Fitting MAX"
-            for _ in tqdm(range(max_tries)):
-                combi = np.random.choice(feature_indexes,size=(n_switches,),replace=False)
-                score = self._evaluate(dataset.X_train,combi)
-                if score<= top_score:
-                    top_score = score
-                    top_combi = list(combi)
-                    tbar.postfix = f"Top Combi: {top_combi}"
-                tbar.update()
-        
-        else:
-            tbar.total = math.factorial(n_switches)
-            tbar.desc = "[CSA] Fitting ALL"
-            combinations = permutations(feature_indexes,n_switches)
-            for combi in combinations:
-                # count down max tries if wanted
-                score = self._evaluate(dataset.X_train,np.asarray(combi))
-                if score<= top_score:
-                    top_score = score
-                    top_combi = list(combi)
-                    tbar.postfix = f"Current best Combi: {top_combi}"
-                tbar.update()
-        tbar.close()
+        progress = Progress(
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(bar_width=None),
+            "[progress.percentage]{task.percentage:>3.1f}%",
+            "•",
+            TimeElapsedColumn(),
+            "•",
+            TimeRemainingColumn(),
+            "•",
+            TextColumn("[red] Top Combi: {task.fields[combi]}"),
+            console=console,
+            transient=True
+        )
+        try:
+            # tbar.postfix = "Top Combi: []"
+            if max_tries is not None:
+                task = progress.add_task("[bold #ed1cdf][CSA][/] [#ffd9fc] Fitting MAX...",total=max_tries, combi="")
+                progress.start()
+                for _ in range(max_tries):
+                    combi = np.random.choice(feature_indexes,size=(n_switches,),replace=False)
+                    scores = self._evaluate(dataset.X_train,combi)
+                    score = scores.mean()
+                    if score<= top_score:
+                        top_score = score
+                        top_combi = list(combi)
+                        progress.update(task,advance=None,combi=str(top_combi))
+                    progress.update(task)
+            
+            else:
+                task = progress.add_task("[bold #ed1cdf][CSA][/] [#ffd9fc] Fitting ALL...",total=math.factorial(n_switches), combi="")
+                progress.start()
+                combinations = permutations(feature_indexes,n_switches)
+                for combi in combinations:
+                    # count down max tries if wanted
+                    scores = self._evaluate(dataset.X_train,np.asarray(combi))
+                    score = scores.mean()
+                    if score<= top_score:
+                        top_score = score
+                        top_combi = list(combi)
+                        progress.update(task,advance=None,combi=str(top_combi))
+                    progress.update(task)
+        finally:
+            progress.stop()
         self.top_combi = top_combi
+        console.print(f"[bold #ed1cdf][CSA][/] Found best combi: {top_combi}")
         return top_combi
 
     def _generate(self, x: np.ndarray) -> np.ndarray:
