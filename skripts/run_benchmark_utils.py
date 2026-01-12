@@ -125,7 +125,7 @@ def load_attack(
             #random_state=seed,
         )
         
-        attack.fit(dataset=dataset, n_switches=8, max_tries=10000, numerical_only=True)
+        attack.fit(dataset=dataset, n_switches=5, max_tries=10000, numerical_only=True)
         return attack
 
     raise ValueError(f"Unknown attack type: {attack_string}")
