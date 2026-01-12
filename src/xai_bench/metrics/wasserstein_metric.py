@@ -27,7 +27,7 @@ class WassersteinMetric(BaseMetric):
         super().__init__("wasserstein")
         self.normalizer = ExplanationNormalizer(normalization_mode)
 
-    def compute(self, e1: np.ndarray, e2: np.ndarray) -> float:
+    def _compute(self, e1: np.ndarray, e2: np.ndarray) -> float:
         e1 = self.normalizer(e1)
         e2 = self.normalizer(e2)
         c1 = np.cumsum(e1)

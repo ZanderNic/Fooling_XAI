@@ -12,7 +12,7 @@ from typing import Any, Dict
 
 # projekt imports
 from xai_bench.base import BaseAttack, BaseDataset, BaseExplainer, BaseMetric, BaseModel
-
+from xai_bench.console import console
 
 
 ##### Utils 
@@ -125,7 +125,7 @@ def load_attack(
             #random_state=seed,
         )
         
-        attack.fit(dataset=dataset, n_switches=30, max_tries=42)
+        attack.fit(dataset=dataset, n_switches=5, max_tries=10000, numerical_only=True)
         return attack
 
     raise ValueError(f"Unknown attack type: {attack_string}")
