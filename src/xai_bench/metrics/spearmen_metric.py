@@ -28,7 +28,7 @@ class SpearmanMetric(BaseMetric):
         super().__init__("spearman")
         self.normalizer = ExplanationNormalizer(normalizer_mode)
 
-    def compute(self, e1: np.ndarray, e2: np.ndarray) -> float:
+    def _compute(self, e1: np.ndarray, e2: np.ndarray) -> float:
         e1 = self.normalizer(e1)
         e2 = self.normalizer(e2)
         r1 = np.argsort(-np.abs(e1))

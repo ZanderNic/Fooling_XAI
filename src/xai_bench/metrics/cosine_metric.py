@@ -28,7 +28,7 @@ class CosineMetric(BaseMetric):
         super().__init__("cosine")
         self.normalizer = ExplanationNormalizer(normalization_mode)
 
-    def compute(self, e1: np.ndarray, e2: np.ndarray) -> float:
+    def _compute(self, e1: np.ndarray, e2: np.ndarray) -> float:
         e1 = self.normalizer(e1)
         e2 = self.normalizer(e2)
         cosine_sim = np.dot(e1, e2)

@@ -74,36 +74,36 @@ def run(
     """
     
     # load model
-    with console.status(f"{TC} Loading model: {model_name}",spinner="aesthetic"):
+    with console.status(f"{TC} Loading model: {model_name}",spinner="shark"):
         model = load_model(model_name, dataset, seed)        
     console.print(f"{RUN_TEXT} Loaded model: ",model_name)
 
     # fit model
     assert dataset.X_train is not None and dataset.y_train is not None, "Sth went wwrong at with the dataset"
-    with console.status(f"{TC} Fitting Model",spinner="aesthetic"):
+    with console.status(f"{TC} Fitting Model",spinner="shark"):
         model.fit(dataset.X_train.values, dataset.y_train.values)   
     console.print(f"{RUN_TEXT} Fitted Model ")
     
     # predict on test and calucalte accuracy
     assert dataset.y_test is not None and dataset.X_test is not None, "Sth went wrong wirh datatset"
-    with console.status(f"{TC} Calculating accuracy",spinner="aesthetic"):
+    with console.status(f"{TC} Calculating accuracy",spinner="shark"):
         acc = accuracy_score(dataset.y_test.values, model.predict(dataset.X_test.values))
     console.print(f"{RUN_TEXT} Calculated accuracy")
     
     # load explainer 
-    with console.status(f"{TC} Loading explainer",spinner="aesthetic"):
+    with console.status(f"{TC} Loading explainer",spinner="shark"):
         explainer = load_explainer(explainer_name, dataset, seed)
     console.print(f"{RUN_TEXT} Loaded Explainer")
     
     # fit explainer
     assert dataset.features is not None, "Sth went wrong with dataset"
-    with console.status(f"{TC} Fitting explainer",spinner="aesthetic"):
+    with console.status(f"{TC} Fitting explainer",spinner="shark"):
         _, t_fit = timed_call(explainer.fit,dataset.X_train.values, model, dataset.features)
     console.print(f"{RUN_TEXT} Fitted Explainer")
     
     
     # get attack
-    with console.status(f"{TC} Loading attack",spinner="aesthetic"):
+    with console.status(f"{TC} Loading attack",spinner="shark"):
         attack = load_attack(attack_string=attack_name, dataset=dataset, model=model, explainer=explainer, metric=metric, seed=seed)
     console.print(f"{RUN_TEXT} Loaded Attack")
     
@@ -116,22 +116,26 @@ def run(
 
     # we need to compare the distance of the real explaination and the attacked one 
 
-    with console.status(f"{TC} Generate attack",spinner="aesthetic"):
+    with console.status(f"{TC} Generate attack",spinner="shark"):
         X_adv, t_generate = timed_call(attack.generate, X_test)
     console.print(f"{RUN_TEXT} Generated Attack")
 
     # generate explanation for real dataset X_test and X_adv
-    with console.status(f"{TC} Explaining real X",spinner="aesthetic"):
+    with console.status(f"{TC} Explaining real X",spinner="shark"):
         x_real_exp = explainer.explain(np.asarray(X_test))
-    with console.status(f"{TC} Explaining adverserial X",spinner="aesthetic"):
+    with console.status(f"{TC} Explaining adverserial X",spinner="shark"):
         x_adv_exp = explainer.explain(X_adv)
     console.print(f"{RUN_TEXT} All X explained")
     
     
-    scores: Dict[str, float] = {}
+    scores: Dict[str, dict] = {}
     for name, MetricCls in track(METRICS.items(), description="Caluclating metrics",transient=True):
         m:BaseMetric = MetricCls()
-        scores[name] = float(m.compute(x_real_exp, x_adv_exp))
+        s = m.compute(x_real_exp, x_adv_exp)
+        scores[name] = {
+            "mean": float(s.mean()),
+            "std": float(s.std())
+        }
     console.print(f"{RUN_TEXT} All metrics calculated")
     
     result = {

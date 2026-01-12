@@ -24,7 +24,7 @@ class BaseMetric(ABC):
 
     # should be a distance, so maximising
     @abstractmethod
-    def compute(self, e1: np.ndarray, e2: np.ndarray) -> float:
+    def _compute(self, e1: np.ndarray, e2: np.ndarray) -> float:
         """
         Compute the distance between two explanation vectors.
 
@@ -41,3 +41,23 @@ class BaseMetric(ABC):
             Distance or dissimilarity between e1 and e2.
         """
         pass
+    
+    # returns all distances of all explanation vectors. Input should have shape (n, n_features). Output is (n,)
+    def compute(self, e1: np.ndarray, e2: np.ndarray) -> np.ndarray:
+        """
+        Compute distances between corresponding explanation vectors.
+
+        Parameters
+        ----------
+        e1 : np.ndarray
+            Explanation vectors of shape (n, n_features).
+        e2 : np.ndarray
+            Explanation vectors of shape (n, n_features).
+
+        Returns
+        -------
+        np.ndarray
+            Array of distances of shape (n,).
+        """
+        return np.array([self._compute(e1[i], e2[i]) for i in range(len(e1))])
+        
