@@ -88,6 +88,7 @@ def run(
     assert dataset.X_train is not None and dataset.y_train is not None, (
         "Sth went wwrong at with the dataset"
     )
+    console.print(dataset.features,dataset.feature_mapping)
     with console.status(f"{TC} Fitting Model", spinner="shark"):
         model.fit(dataset.X_train.values, dataset.y_train.values)
     console.print(f"{RUN_TEXT} Fitted Model ")
@@ -147,7 +148,7 @@ def run(
     # generate explanation for real dataset X_test and X_adv
     with console.status(f"{TC} Explaining real X", spinner="shark"):
         x_real_exp = explainer.explain(np.asarray(X_test))
-        
+
     with console.status(f"{TC} Explaining adverserial X", spinner="shark"):
         x_adv_exp = explainer.explain(X_adv)
     console.print(f"{RUN_TEXT} All X explained")

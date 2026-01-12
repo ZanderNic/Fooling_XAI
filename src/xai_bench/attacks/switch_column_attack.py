@@ -65,14 +65,18 @@ class ColumnSwitchAttack(BaseAttack):
     n_switches: number of ccolumns to permutate
     max_tries: If not none, pick randomly from permutations until max_tries is reached (with possible repeats). Usefull if n_switches is high, as number of combinations is (n_switches)!
     """
-    def fit(self, dataset:BaseDataset, n_switches:int, max_tries:Optional[int]=None):
+    def fit(self, dataset:BaseDataset, n_switches:int, max_tries:Optional[int]=None, numerical_only:bool=True):
         assert dataset.X_train is not None and dataset.y_train is not None, "Dataset needs to be loaded"
         assert n_switches>=2, "One is not an option"
         assert n_switches<=len(dataset.X_train.columns), "Cant switch more columns than the dataset has"
         if dataset.numerical_features is None:
             raise ValueError(f"This dataset ({dataset}) has the numerical_features attribute not set, which is needed for a ColumnSwitchAttack!")
         assert dataset.features, "Dataset needs features"
-        feature_indexes = [dataset.features.feature_names_model.index(f) for f in dataset.numerical_features] # TODO: get from feature mapping
+        if numerical_only:
+            feature_indexes = [dataset.features.feature_names_model.index(f) for f_name in dataset.numerical_features for f in dataset.feature_mapping[f_name]] # TODO: get from feature mapping
+        else:
+            feature_indexes = list(range(len(dataset.features.feature_names_model)))
+        console.print(f"[bold #ed1cdf][CSA][/] [#f7c8f3] Fitting on features: {feature_indexes} (aka. {[dataset.features.feature_names_model[f] for f in feature_indexes]})")
 
         top_score = np.inf
         top_combi: list[int] = []  # combi means lsit in index with data switching to the right. E.g. [1,4,6] would result in 1->4->6->1, so column 1 now has data from column 6, column 4 has now date from column 1 and column 6 has now data from column 4.
@@ -80,15 +84,14 @@ class ColumnSwitchAttack(BaseAttack):
         progress = Progress(
             TextColumn("[progress.description]{task.description}"),
             BarColumn(bar_width=40),
-            "[progress.percentage]{task.completed}/{task.total} ",
-            "[bold #ed1cdf]•[/]",
-            "[progress.percentage]{task.percentage:>3.1f}%",
+            "[progress.percentage]{task.completed}/{task.total}",
+            "[progress.percentage]({task.percentage:>3.1f}%)",
             "[bold #ed1cdf]•[/]",
             TimeElapsedColumn(),
-            "[bold #ed1cdf]•[/]",
+            "[bold #ed1cdf]/[/]",
             TimeRemainingColumn(),
             "[bold #ed1cdf]•[/]",
-            TextColumn("[red] Top Combi: {task.fields[combi]}"),
+            TextColumn("[red]Top Combi: {task.fields[combi]}"),
             console=console,
             transient=True
         )
@@ -123,7 +126,7 @@ class ColumnSwitchAttack(BaseAttack):
         finally:
             progress.stop()
         self.top_combi = top_combi
-        console.print(f"[bold #ed1cdf][CSA][/] [#f7c8f3] Found best combi: [#cbe9f5]{self.top_combi}[/] (meaning [#cbe9f5]{feature_indexes}[/] -> [#cbe9f5]{self._switched(feature_indexes,self.top_combi)}[/])")
+        console.print(f"[bold #ed1cdf][CSA][/] [#f7c8f3] Found best combi: [#cbe9f5]{self.top_combi}[/] (meaning [#cbe9f5]{feature_indexes}[/] -> [#cbe9f5]{self._switched(feature_indexes,self.top_combi)}[/] / [#cbe9f5]{[dataset.features.feature_names_model[f] for f in feature_indexes]}[/] -> [#cbe9f5]{[dataset.features.feature_names_model[f] for f in  self._switched(feature_indexes,self.top_combi)]}[/])")
         return top_combi
 
     def _generate(self, x: np.ndarray) -> np.ndarray:
