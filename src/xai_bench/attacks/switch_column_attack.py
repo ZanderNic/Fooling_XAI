@@ -123,7 +123,7 @@ class ColumnSwitchAttack(BaseAttack):
         finally:
             progress.stop()
         self.top_combi = top_combi
-        console.print(f"[bold #ed1cdf][CSA][/] [#f7c8f3] Found best combi: [#cbe9f5]{self.top_combi}[/](meaning {feature_indexes} -> {self._switched(feature_indexes,self.top_combi)})")
+        console.print(f"[bold #ed1cdf][CSA][/] [#f7c8f3] Found best combi: [#cbe9f5]{self.top_combi}[/] (meaning [#cbe9f5]{feature_indexes}[/] -> [#cbe9f5]{self._switched(feature_indexes,self.top_combi)}[/])")
         return top_combi
 
     def _generate(self, x: np.ndarray) -> np.ndarray:
