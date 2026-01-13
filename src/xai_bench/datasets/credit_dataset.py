@@ -1,16 +1,19 @@
 # Dataset Give me some credit 
 import pandas as pd
-
+from pathlib import Path
 
 from xai_bench.datasets.base_dataset import BaseDataset
 
 
 class CreditDataset(BaseDataset):
-    def __init__(self, path: str, **kwargs):
+    def __init__(self, path: str = None, **kwargs):
         self.categorical_features = []
         self.numerical_features = ['RevolvingUtilizationOfUnsecuredLines', 'age', 'NumberOfTime30-59DaysPastDueNotWorse', 'DebtRatio', 'MonthlyIncome', 'NumberOfDependents', 'CombinedDefaulted', 'CombinedCreditLoans']
         self.target = "SeriousDlqin2yrs"
         self.task = "classification"
+
+        path = str(path) if path is not None else f"{Path(__file__).parent}/cs-training_clean.csv"
+
         super().__init__(path, **kwargs)
 
     def read(self) -> pd.DataFrame:

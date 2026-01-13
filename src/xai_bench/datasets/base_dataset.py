@@ -21,7 +21,8 @@ class BaseDataset(ABC):
         self.test_size = test_size
         self.random_state = random_state
         self.stratify = stratify
-        self.task: Optional[Literal["classification","regression"]]= task
+        if self.task is None:
+            self.task: Optional[Literal["classification","regression"]]= task
 
         self.classes: Optional[list] = None
         self.num_classes: Optional[int] = None
@@ -38,7 +39,7 @@ class BaseDataset(ABC):
         self.feature_mapping: Dict[str, List[str]] = {}
         self.feature_ranges: Dict[str, Tuple[float, float]] = {}
 
-        self.categorical_features: Optional[List[str]] # from heart datasets
+        self.categorical_features: Optional[List[str]]
         self.numerical_features: Optional[List[str]]
 
         self._load_and_prepare()
