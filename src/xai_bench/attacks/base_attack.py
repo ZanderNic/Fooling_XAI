@@ -51,3 +51,17 @@ class BaseAttack(ABC):
             p: np.ndarray = self.model.predict_scalar(X)
             p_adv: np.ndarray = self.model.predict_scalar(X_adv)
         return np.abs(p - p_adv)
+    
+    @overload
+    def is_attack_okay(self, X:np.ndarray, X_adv:np.ndarray, epsilon:float) -> tuple[bool, int]:
+        pass
+    @overload
+    def is_attack_okay(self, X:pd.DataFrame, X_adv:pd.DataFrame, epsilon:float) -> tuple[bool, int]:
+        pass
+    def is_attack_okay(self, X, X_adv, epsilon):
+        # prediction distance
+        p_dist = self._prediction_distance(X,X_adv)
+        # epsilon
+        okays:np.ndarray = p_dist<=epsilon
+        # return ob okay; num_feature/num_samples okay
+        return okays.all(axis=-1), okays.sum(axis=-1)
