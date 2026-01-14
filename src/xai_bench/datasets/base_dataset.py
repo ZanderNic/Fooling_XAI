@@ -62,16 +62,21 @@ class BaseDataset(ABC):
         X = self.X_full
         y = self.y_full
 
-        # set class counts
-        self.classes = cast(list,y.unique().tolist())
-        self.num_classes = len(self.classes)
+        if self.task == 'classification':
+            self.classes = cast(list, y.unique().tolist())
+            self.num_classes = len(self.classes)
+            stratify_target = y if self.stratify else None
+        else: # regression
+            self.classes = []
+            self.num_classes = 1
+            stratify_target = None
 
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
             X,
             y,
             test_size=self.test_size,
             random_state=self.random_state,
-            stratify=y if self.stratify else None
+            stratify=stratify_target
         )
 
         # scale numerical features
@@ -97,6 +102,7 @@ class BaseDataset(ABC):
         ], axis=1)
 
         self.features = Features(list(self.X_full.columns))
+        
         # determine scaled and unscaled feature ranges
         self.feature_ranges = {
             col: (self.X_train[col].min(), self.X_train[col].max()) for col in self.X_train.columns
@@ -121,6 +127,7 @@ class BaseDataset(ABC):
             False 
             for feature in self.features.feature_names_model
         ]
+
 
     def one_hot_encode_with_mapping(
         self,

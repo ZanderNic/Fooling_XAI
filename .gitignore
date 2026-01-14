@@ -219,5 +219,12 @@ __marimo__/
 !heart.csv
 !heart_failure_.csv
 
+
+# Prisoners
+!compas_recidivism_racial_bias
+
+# Housing Price Regression
+!housing.csv
+
 # macos
 *.DS_Store
