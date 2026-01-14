@@ -95,6 +95,7 @@ def load_attack(
     explainer: BaseExplainer,
     metric: BaseMetric,
     seed: int,
+    epsilon: float
 ) -> BaseAttack:
     """
         Instantiate and return an attack according to the selected attack string.
@@ -106,6 +107,7 @@ def load_attack(
         attack =  DistributionShiftAttack(
             dataset=dataset,
             model=model,
+            
             # explainer=explainer,  # TODO !!!!!!!11
             # metric=metric,
             # random_state=seed,
@@ -119,7 +121,8 @@ def load_attack(
         from xai_bench.attacks.switch_column_attack import ColumnSwitchAttack
         attack =  ColumnSwitchAttack(
             model=model,
-            task= dataset.task
+            task= dataset.task,
+            epsilon=epsilon
             #explainer=explainer,
             #metric=metric,
             #random_state=seed,

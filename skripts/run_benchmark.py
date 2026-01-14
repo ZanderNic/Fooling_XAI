@@ -76,6 +76,7 @@ def run(
     metric: BaseMetric,
     seed: int,
     num_samples: int = 1000,
+    epsilon: float = 0.05,
 ):
     """ """
 
@@ -126,6 +127,7 @@ def run(
             explainer=explainer,
             metric=metric,
             seed=seed,
+            epsilon=epsilon
         )
     console.print(f"{RUN_TEXT} Loaded Attack")
 

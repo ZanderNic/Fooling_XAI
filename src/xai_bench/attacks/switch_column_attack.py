@@ -13,8 +13,8 @@ class ColumnSwitchAttack(BaseAttack):
     model: the model to use for fitting (finding best switches)
     task: classification or regression, passed on to model.predict
     """
-    def __init__(self, model:BaseModel, task: Literal["classification","regression"]):
-        super().__init__(model, task=task)
+    def __init__(self, model:BaseModel, task: Literal["classification","regression"], epsilon:Optional[float]=None):
+        super().__init__(model, task=task,epislon=epsilon)
         self.top_combi: Optional[list] = None
     
     """

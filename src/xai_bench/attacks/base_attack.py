@@ -23,6 +23,8 @@ class BaseAttack(ABC):
 
     """
     Will recieve either ONE sample of shape (features,) or multiple samples of shape (n,features) to generate an attack on
+    
+    Every sample that gets returned has to pass the is_attack_okay function. Meaning, all samples prediction threshhold must remain <= epsilon. For every sample that doenst pass the thresholding, just return the original sample.
     """
     def generate(self, x: np.ndarray) -> np.ndarray:
         x = np.asarray(x)
@@ -69,3 +71,5 @@ class BaseAttack(ABC):
         okays:np.ndarray = p_dist<=epsilon
         # return ob okay; num_feature/num_samples okay
         return okays.all(axis=-1), okays.sum(axis=-1)
+    
+    def attack
