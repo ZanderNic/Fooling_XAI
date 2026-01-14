@@ -99,6 +99,26 @@ class BaseModel(ABC):
         # regression
         return self.predict_scalar(X)
 
+    def predict_raw(self, X) -> np.ndarray:
+        """
+        Direct prediction interface without task-based post-processing.
+
+        Behavior depends strictly on the task:
+
+        Classification:
+            - Calls predict_proba(X)
+            - Returns class probabilities directly
+            - Output shape: (n, C)
+
+        Regression:
+            - Calls predict_scalar(X)
+            - Returns scalar predictions directly
+            - Output shape: (n, 1)
+        """
+        if self.task == "classification":
+            return self.predict_proba(X)
+        # regression
+        return self.predict_scalar(X).reshape(-1, 1)
 
     def predict_proba(self, X) -> np.ndarray:
         """
@@ -116,7 +136,6 @@ class BaseModel(ABC):
         raise NotImplementedError(
             "predict_proba is only defined for classification models."
         )
-
 
     def predict_scalar(self, X) -> np.ndarray:
         """
