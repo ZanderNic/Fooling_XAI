@@ -15,6 +15,7 @@ from xai_bench.models.base_model import BaseModel
 
 class ShapAdapter(BaseExplainer):
     def __init__(self, dataset: BaseDataset, nsamples: int = 2000, background_size: int = 200, random_state: int = 42):
+        super().__init__(stats=(self,"ShapExplainer counter"))
         self.dataset = dataset
         self.nsamples = int(nsamples)
         self.background_size = int(background_size)
@@ -32,6 +33,7 @@ class ShapAdapter(BaseExplainer):
         features: Features,
         use_all_data: bool = False
     ) -> None:
+        self.stats("fit")
         self.model = model
         self.features = features
 
@@ -76,6 +78,7 @@ class ShapAdapter(BaseExplainer):
         assert self.model is not None, "Model not fitted"
 
         X = np.asarray(X, dtype=float)
+        self.stats("explain",X)
 
         # produce explanations
         shap_values = self._explainer.shap_values(

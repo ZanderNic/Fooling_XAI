@@ -66,7 +66,7 @@ class TorchCNN1D(BaseModel):
         device: Optional[Union[str, torch.device]] = None,
         seed: int = 0,
     ):
-        super().__init__(task)
+        super().__init__(task,stats=(self,"TorchCNN1D Thingy"))
 
         if self.task == "classification":
             if not isinstance(num_classes, int) or num_classes < 2:
@@ -127,6 +127,7 @@ class TorchCNN1D(BaseModel):
         return torch.from_numpy(Xn).to(self.device, dtype=torch.float32)
 
     def fit(self, X, y) -> "TorchCNN1D":
+        self.stats("fit",len(X))
         Xt = self._prepare_X(X)
         yn = _check_1d_vector(y)
 
@@ -163,6 +164,7 @@ class TorchCNN1D(BaseModel):
 
     @torch.no_grad()
     def predict_proba(self, X) -> np.ndarray:
+        self.stats("predict_proba",X)
         if self.task != "classification":
             raise NotImplementedError("predict_proba is only defined for classification models.")
         self.net.eval()
@@ -177,6 +179,7 @@ class TorchCNN1D(BaseModel):
 
     @torch.no_grad()
     def predict_scalar(self, X) -> np.ndarray:
+        self.stats("predict_scalar",X)
         if self.task != "regression":
             raise NotImplementedError("predict_scalar is only defined for regression models.")
         self.net.eval()

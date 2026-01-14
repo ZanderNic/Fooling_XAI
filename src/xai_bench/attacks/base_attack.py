@@ -13,7 +13,7 @@ class BaseAttack(ABC):
         self.model = model
         self.task: Literal["classification","regression"] = task
         self.epsilon: Optional[float] = epislon
-        self.stats = StatCollector(obj=self,comment="Calls of Generate of attack")
+        self.stats = StatCollector(obj=self,comment="Calls of attack")
     """
     Call beforehand in order to setup the attack. (e.g. finding best parameters)
     """
@@ -28,11 +28,10 @@ class BaseAttack(ABC):
     """
     def generate(self, x: np.ndarray) -> np.ndarray:
         x = np.asarray(x)
+        self.stats("generate", x)
         if x.ndim == 2:
-            self.stats(x.shape[0])
             return np.asarray([self._generate(s) for s in x])
         else:
-            self.stats()
             return self._generate(x)
 
     @abstractmethod
