@@ -452,7 +452,8 @@ def population_fitness(
     model: BaseModel,
     reference_predictions: np.ndarray,
     drift_threshold: float = 0.5,
-    drift_confidence: float = 0.95
+    drift_confidence: float = 0.95,
+    prediction_threshold: float = None
 ) -> tuple[np.ndarray, float]:
     """
     Computes the optimization metrics for a population of individuals. The metrics are based on 
@@ -482,6 +483,9 @@ def population_fitness(
             A float value representing the desired confidence level (between 0 and 1) for the
             drift constraint, such that LCB_Wilson(estimated_probability) >= drift_confidence.
 
+        prediction_threshold (float):
+            A float value representing the threshold for model predictions to be considered valid.
+
     Returns:
         tuple[np.ndarray, float]:
             - A 2D numpy array of shape (n_population, 2) with the optimization metrics for each
@@ -506,7 +510,8 @@ def population_fitness(
     # determine dimensionalities
     n_pop = len(population)
     n_sample_size = len(population[0])
-    n_features = population[0][0].data.shape[1]
+    n_datapoints = reference_explanations.shape[0]
+    n_features = reference_explanations.shape[1]
 
     print("Start population fitness calculation:")
     start_time = time.time()  # LOGGING
@@ -550,12 +555,13 @@ def population_fitness(
     # determine the prediction mask to filter valid explanations
     reference_predictions_rep = np.tile(
         reference_predictions,
-        (n_pop, n_sample_size)
+        (n_pop, n_sample_size, 1, 1)
     )
 
-    predictions = model.predict(pop).reshape(n_pop, -1)
+    predictions = model.predict_raw(pop).reshape(n_pop, n_sample_size, n_datapoints, -1)
+    prediction_mask = np.abs(reference_predictions_rep - predictions) <= prediction_threshold
+    prediction_mask = prediction_mask.all(axis=-1).reshape(n_pop, -1)
 
-    prediction_mask = reference_predictions_rep == predictions
     valid_scores_amount = prediction_mask.sum(axis=-1)
 
     print(f"\tCalculating prediction mask took {time.time() - section_time} seconds.")
@@ -1146,7 +1152,8 @@ def evolve_population(
     X_max: np.ndarray = None,
     X_cat: list = None,
     early_stopping_patience: int = 10,
-    rng: np.random.Generator = None
+    rng: np.random.Generator = None,
+    prediction_threshold: float = None
 ) -> tuple[np.ndarray, np.ndarray, EarlyStopping, list[tuple[np.ndarray, list[list[Individual]], float]], float]:
     """
     Evolves the given initial population over a specified number of generations
@@ -1208,6 +1215,9 @@ def evolve_population(
 
         rng (np.random.Generator):
             A numpy random Generator instance for reproducibility.
+        
+        prediction_threshold (float):
+            A float value representing the threshold for model predictions to be considered valid.
 
     Returns:
         tuple:
@@ -1252,6 +1262,7 @@ def evolve_population(
     assert isinstance(early_stopping_patience, int)
     assert early_stopping_patience > 0
     assert isinstance(rng, np.random.Generator)
+    assert prediction_threshold is not None and isinstance(prediction_threshold, float)
 
     try:
         time_start = time.time()
@@ -1269,7 +1280,9 @@ def evolve_population(
         current_population = copy.deepcopy(initial_population)
         individual_sample_size = len(initial_population[0])
 
-        reference_predictions = model.predict(X_data)
+        reference_predictions = model.predict_raw(X_data)
+        if reference_predictions.ndim == 1:
+            reference_predictions = reference_predictions.reshape(-1, 1)
 
         # calculate the fitness for all individuals in the current population
         fitness_metrics, mean_probability = population_fitness(
@@ -1279,7 +1292,8 @@ def evolve_population(
             model,
             reference_predictions,
             drift_threshold,
-            drift_confidence
+            drift_confidence,
+            prediction_threshold
         )
 
         # rank the individuals' fitness metrics
@@ -1334,7 +1348,8 @@ def evolve_population(
                 model,
                 reference_predictions,
                 drift_threshold,
-                drift_confidence
+                drift_confidence,
+                prediction_threshold
             )
 
             # rank the individuals' fitness metrics
@@ -1387,6 +1402,7 @@ class DataPoisoningAttack(BaseAttack):
         model: BaseModel,
         task: Literal["classification","regression"]="classification",
         random_state: int = None,
+        epsilon: float = None
     ):
         """
         Initializes the DataPoisoningAttack object with the specified arguments.
@@ -1404,7 +1420,7 @@ class DataPoisoningAttack(BaseAttack):
             random_state (int):
                 An integer representing the random seed for reproducibility.
         """
-        super().__init__(model, task)
+        super().__init__(model, task, epsilon)
         self.dataset = dataset
 
         self.rng = np.random.default_rng(seed=random_state)
@@ -1544,7 +1560,8 @@ class DataPoisoningAttack(BaseAttack):
             X_max=self.X_max,
             X_cat=self.X_cat,
             early_stopping_patience=EARLY_STOPPING_PATIENCE,
-            rng=self.rng
+            rng=self.rng,
+            prediction_threshold=self.epsilon
         )
 
         # save the best found stds for data poisoning on the dataset
