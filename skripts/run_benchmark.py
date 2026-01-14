@@ -158,7 +158,7 @@ def run(
     with console.status(f"{TC} Explaining real X", spinner="shark"):
         x_real_exp = explainer.explain(np.asarray(X_test))
 
-    with console.status(f"{TC} Explaining adverserial X", spinner="shark"):
+    with console.status(f"{TC} Explaining adversarial X", spinner="shark"):
         x_adv_exp = explainer.explain(X_adv)
     console.print(f"{RUN_TEXT} All X explained")
 
