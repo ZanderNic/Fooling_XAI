@@ -9,11 +9,11 @@ from jaxtyping import Shaped
 from xai_bench.stat_collector import StatCollector
 
 class BaseAttack(ABC):
-    def __init__(self, model: BaseModel, task: Literal["classification","regression"], epislon:Optional[float]):
+    def __init__(self, model: BaseModel, task: Literal["classification","regression"], epislon:Optional[float], stats):
         self.model = model
         self.task: Literal["classification","regression"] = task
         self.epsilon: Optional[float] = epislon
-        self.stats = StatCollector(obj=self,comment="Calls of attack")
+        self.stats = StatCollector(obj=stats[0],comment=stats[1])
     """
     Call beforehand in order to setup the attack. (e.g. finding best parameters)
     """
@@ -48,6 +48,8 @@ class BaseAttack(ABC):
     def _prediction_distance(self, X:pd.DataFrame, X_adv:pd.DataFrame) -> np.ndarray:
         pass
     def _prediction_distance(self, X, X_adv):
+        assert (isinstance(X,pd.DataFrame)) or (isinstance(X,np.ndarray) and X.ndim==2), "Dataframe or Single sample with shape (1,num_features)"
+        assert (isinstance(X_adv,pd.DataFrame)) or (isinstance(X_adv,np.ndarray) and X.ndim==2), "Dataframe or Single sample with shape (1,num_features)"
         if self.task == "classification":
             p: np.ndarray = self.model.predict_proba(X)
             p_adv: np.ndarray = self.model.predict_proba(X_adv)
@@ -56,11 +58,12 @@ class BaseAttack(ABC):
             p_adv: np.ndarray = self.model.predict_scalar(X_adv)
         return np.abs(p - p_adv)
     
+
     @overload
     def is_attack_valid(self, X:np.ndarray, X_adv:np.ndarray, epsilon:Optional[float]=None) -> tuple[bool, int]:
         pass
     @overload
-    def is_attack_valid(self, X:pd.DataFrame, X_adv:pd.DataFrame, epsilon:Optional[float]=None) -> tuple[bool, int]:
+    def is_attack_valid(self, X:pd.DataFrame, X_adv:pd.DataFrame, epsilon:Optional[float]=None) -> tuple[np.ndarray, int]:
         pass
     def is_attack_valid(self, X, X_adv, epsilon=None):
         # prediction distance
@@ -72,3 +75,10 @@ class BaseAttack(ABC):
         okays:np.ndarray = p_dist<=epsilon
         # return ob okay; num_feature/num_samples okay
         return okays.all(axis=-1), okays.sum(axis=-1)
+    
+    """
+    Will use attack when valid, otherwise original
+    """
+    def wrap_attack_valid(self, X, X_adv, epislon:Optional[float]=None):
+        _, sums = self.is_attack_valid(X,X_adv,epislon)
+        return np.where(sums,X_adv,X)

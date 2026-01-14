@@ -170,7 +170,10 @@ def run(
 
     with console.status(f"{TC} Calcualting Scores on ALL data and only successfull attacks", spinner="shark"):
         explain_scores_all = calcualte_metrics(x_real_exp,x_adv_exp,METRICS)
-        explain_scores_on_success_only = calcualte_metrics(x_real_exp[mask],x_adv_exp[mask],METRICS)
+        if succ_count>1:
+            explain_scores_on_success_only = calcualte_metrics(x_real_exp[~mask],x_adv_exp[~mask],METRICS)
+        else:
+            explain_scores_on_success_only = {"No metrics possible": "No successfull attacks"}
     console.print(f"{RUN_TEXT} All explaination scores calcualted")
 
     stats = StatCollector.collect(model,attack,explainer)
@@ -202,7 +205,7 @@ def run(
         },
         "explain_scores_on_all": explain_scores_all,
         "explain_scores_on_success_only": explain_scores_on_success_only,
-        "stats":stats[1]
+        # "stats":stats[1]
     }
 
     return result

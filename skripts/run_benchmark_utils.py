@@ -130,7 +130,7 @@ def load_attack(
             #random_state=seed,
         )
         
-        attack.fit(dataset=dataset, n_switches=5, max_tries=10000, numerical_only=True)
+        attack.fit(dataset=dataset, n_switches=5, max_tries=1000, numerical_only=True)
         return attack
     
     if attack_string == "DataPoisoningAttack":
@@ -187,7 +187,7 @@ def save_result_json(path: Path, payload: Dict[str, Any]) -> None:
 def get_attack_success(X:np.ndarray,X_adv:np.ndarray) -> tuple[np.ndarray, int, float]: 
     assert X.shape == X_adv.shape, "Must have same shape"
     mask = X==X_adv
-    return mask, mask.sum(), len(X)/mask.sum()
+    return mask.all(axis=1), int(mask.all(axis=1).sum()), float(mask.all(axis=1).sum()/len(X))
 
 def calcualte_metrics(X_exp:np.ndarray, X_adv_exp:np.ndarray, METRICS:dict)->dict:
     explain_scores: Dict[str, dict] = {}

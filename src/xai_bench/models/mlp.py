@@ -93,7 +93,7 @@ class TorchMLP(BaseModel):
         self.num_classes = num_classes
 
     def fit(self, X, y):
-        self.stats("fit",len(X))
+        self.stats("fit",X)
         Xn = _to_numpy(X)
         yn = _check_1d_vector(y)
 
