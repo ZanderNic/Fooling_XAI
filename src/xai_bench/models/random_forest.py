@@ -58,7 +58,7 @@ class SKRandomForest(BaseModel):
         max_depth: Optional[int] = None,
         **kwargs,
     ):
-        super().__init__(task)
+        super().__init__(task,stats=(self,"RF"))
         self._rf_kwargs = rf_kwargs(
             n_estimators=n_estimators,
             random_state=random_state,
@@ -69,6 +69,7 @@ class SKRandomForest(BaseModel):
         self.model = None
 
     def fit(self, X, y) -> "SKRandomForest":
+        self.stats("fit",X)
         Xn = _to_numpy(X)
         yn = _check_1d_vector(y)
         
@@ -78,6 +79,7 @@ class SKRandomForest(BaseModel):
         return self
 
     def predict_proba(self, X) -> np.ndarray:
+        self.stats("predict_proba",X)
         if self.task != "classification":
             raise NotImplementedError("predict_proba is only defined for classification models.")
         if self.model is None:
@@ -96,6 +98,7 @@ class SKRandomForest(BaseModel):
         return proba
 
     def predict_scalar(self, X) -> np.ndarray:
+        self.stats("predict_scalar",X)
         if self.task != "regression":
             raise NotImplementedError("predict_scalar is only defined for regression models.")
         if self.model is None:

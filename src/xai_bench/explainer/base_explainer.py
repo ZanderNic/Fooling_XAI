@@ -8,6 +8,7 @@ import numpy as np
 
 # base imports
 from xai_bench.models.base_model import BaseModel
+from xai_bench.stat_collector import StatCollector
 
 # Options
 TaskType = Literal["classification", "regression"]
@@ -54,6 +55,8 @@ class BaseExplainer:
         Concrete explainers must subclass this class and implement the `explain` method.
     
     """
+    def __init__(self,stats:tuple):
+        self.stats = StatCollector(stats[0],comment=stats[1])
 
     def fit(
         self, 

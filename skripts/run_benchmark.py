@@ -28,6 +28,7 @@ import numpy as np
 # projekt imports
 from xai_bench.console import console, RUN_TEXT, TC
 from xai_bench.base import BaseDataset, BaseMetric
+from xai_bench.stat_collector import StatCollector
 
 # datasets
 from xai_bench.datasets.credit_dataset import CreditDataset
@@ -171,6 +172,8 @@ def run(
         explain_scores[name] = {"mean": float(s.mean()), "std": float(s.std())}
     console.print(f"{RUN_TEXT} All explaination scores calcualted")
 
+    stats = StatCollector.collect(model,attack,explainer)
+    console.print(stats[0])
 
     result = {
         "meta": {
@@ -193,6 +196,7 @@ def run(
             "attack_generate": asdict(t_generate)
         },
         "explain_scores": explain_scores,
+        "stats":stats[1]
     }
 
     return result
