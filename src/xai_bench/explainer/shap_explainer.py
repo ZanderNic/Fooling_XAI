@@ -67,7 +67,8 @@ class ShapAdapter(BaseExplainer):
 
     def explain(
         self, 
-        X: np.ndarray
+        X: np.ndarray,
+        num_samples: int = None
     ) -> np.ndarray:
         """
         Compute a SHAP explanation and aggregate it according to the dataset's feature mapping.

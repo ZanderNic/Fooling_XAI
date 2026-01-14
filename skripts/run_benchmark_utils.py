@@ -159,6 +159,24 @@ def load_attack(
         )
 
         return attack
+    
+    if attack_string == "GreedyHillClimb":
+        from xai_bench.attacks.greedy_hill_climb import GreedyHillClimb
+        attack = GreedyHillClimb(
+            dataset=dataset,
+            model=model,
+            explainer=explainer,
+            metric=metric,
+            epsilon=epsilon,
+            seed=seed,
+            task=dataset.task,
+            num_climbs=100,
+            num_derections=100,
+            max_trys=1,
+            step_len=0.001,
+            proba_numeric=0.7,
+        )
+        return attack
 
     raise ValueError(f"Unknown attack type: {attack_string}")
 
