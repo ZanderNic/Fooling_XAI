@@ -69,3 +69,11 @@ class StatCollector():
     """
     def deactiavte(self):
         self.active = False
+
+    """
+    REsetes all stats collection on this object
+    """
+    def reset(self):
+        self.calls_samples = {}
+        self.calls = {}
+        self.active = True
