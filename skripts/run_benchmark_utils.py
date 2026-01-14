@@ -8,7 +8,9 @@ from pathlib import Path
 from typing import Any, Dict
 
 # 3-party imports
-
+import pandas as pd
+import numpy as np
+from rich.progress import track
 
 # projekt imports
 from xai_bench.base import BaseAttack, BaseDataset, BaseExplainer, BaseMetric, BaseModel
@@ -180,3 +182,19 @@ def save_result_json(path: Path, payload: Dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, ensure_ascii=False)
+
+
+def get_attack_success(X:np.ndarray,X_adv:np.ndarray) -> tuple[np.ndarray, int, float]: 
+    assert X.shape == X_adv.shape, "Must have same shape"
+    mask = X==X_adv
+    return mask, mask.sum(), len(X)/mask.sum()
+
+def calcualte_metrics(X_exp:np.ndarray, X_adv_exp:np.ndarray, METRICS:dict)->dict:
+    explain_scores: Dict[str, dict] = {}
+    for name, MetricCls in track(
+        METRICS.items(), description="Caluclating Explaination scores", transient=True
+    ):
+        m: BaseMetric = MetricCls()
+        s = m.compute(X_exp, X_adv_exp)
+        explain_scores[name] = {"mean": float(s.mean()), "std": float(s.std())}
+    return explain_scores

@@ -48,6 +48,8 @@ from run_benchmark_utils import (
     load_attack,
     now_utc_iso,
     timed_call,
+    get_attack_success,
+    calcualte_metrics
 )
 
 
@@ -163,13 +165,12 @@ def run(
         x_adv_exp = explainer.explain(X_adv)
     console.print(f"{RUN_TEXT} All X explained")
 
-    explain_scores: Dict[str, dict] = {}
-    for name, MetricCls in track(
-        METRICS.items(), description="Caluclating Explaination scores", transient=True
-    ):
-        m: BaseMetric = MetricCls()
-        s = m.compute(x_real_exp, x_adv_exp)
-        explain_scores[name] = {"mean": float(s.mean()), "std": float(s.std())}
+    # get attack success
+    mask, succ_count, succ_rate = get_attack_success(X_test.to_numpy(),X_adv)
+
+    with console.status(f"{TC} Calcualting Scores on ALL data and only successfull attacks", spinner="shark"):
+        explain_scores_all = calcualte_metrics(x_real_exp,x_adv_exp,METRICS)
+        explain_scores_on_success_only = calcualte_metrics(x_real_exp[mask],x_adv_exp[mask],METRICS)
     console.print(f"{RUN_TEXT} All explaination scores calcualted")
 
     stats = StatCollector.collect(model,attack,explainer)
@@ -186,16 +187,21 @@ def run(
             "explainer": explainer.__class__.__name__,
             "selected_metric_for_attack": metric.__class__.__name__,
             "num_samples": int(len(X_test)),
-            "accuracy": acc, # accuracy of model prediction on X test
-            "attack_accuracy": predict_accuracy,  # acucracy of model preduction on attacked X test
-            "model_attack_fidelity": model_attack_fidelity,  # fidelity between model prediction on X test and attacked X test
         },
         "timing": {
             "explainer_fit": asdict(t_exp_fit),
             "attack_fit": asdict(t_attack_fit),
             "attack_generate": asdict(t_generate)
         },
-        "explain_scores": explain_scores,
+        "results":{
+            "accuracy": acc, # accuracy of model prediction on X test
+            "attack_accuracy": predict_accuracy,  # acucracy of model preduction on attacked X test
+            "model_attack_fidelity": model_attack_fidelity,  # fidelity between model prediction on X test and attacked X test
+            "attack_success_rate": succ_rate,
+            "attack_success_count": succ_count,
+        },
+        "explain_scores_on_all": explain_scores_all,
+        "explain_scores_on_success_only": explain_scores_on_success_only,
         "stats":stats[1]
     }
 
