@@ -33,8 +33,9 @@ from xai_bench.stat_collector import StatCollector
 # datasets
 from xai_bench.datasets.credit_dataset import CreditDataset
 from xai_bench.datasets.heart_dataset import HeartDataset
-from xai_bench.datasets.heart_failure import Heart_Failure
-from xai_bench.datasets.prisoners import PrisonersDataset
+from xai_bench.datasets.prisoners import PrisoneresDataset
+from xai_bench.datasets.housing import HousingDataset
+from xai_bench.datasets.covtype_forest import ForestDataset
 
 # metrics
 from xai_bench.metrics.cosine_metric import CosineMetric
@@ -54,10 +55,11 @@ from run_benchmark_utils import (
 
 
 DATASETS = {
-    "heart-uci": HeartDataset,
-    "heart-failure": Heart_Failure,
+    "heart_uci": HeartDataset,
+    "housing": HousingDataset,
     "credit": CreditDataset,
-    "prisoners": PrisonersDataset,
+    "prisoners": PrisoneresDataset,
+    "forest": ForestDataset
 }
 
 METRICS = {
@@ -205,7 +207,7 @@ def run(
         },
         "explain_scores_on_all": explain_scores_all,
         "explain_scores_on_success_only": explain_scores_on_success_only,
-        # "stats":stats[1]
+        "stats":stats[1]
     }
 
     return result
