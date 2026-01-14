@@ -69,7 +69,7 @@ METRICS = {
 }
 
 MODELS = ["CNN1D", "MLP", "RF"]
-ATTACKS = ["DistributionShiftAttack", "ColumnSwitchAttack", "DataPoisoningAttack"]
+ATTACKS = ["DistributionShiftAttack", "ColumnSwitchAttack", "DataPoisoningAttack", "GreedyHillClimb"]
 EXPLAINER = ["Shap", "Lime"]
 
 
