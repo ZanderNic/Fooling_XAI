@@ -6,14 +6,14 @@ from typing import Literal, overload, Optional
 from numbers import Number
 import pandas as pd
 from jaxtyping import Shaped
-
+from xai_bench.stat_collector import StatCollector
 
 class BaseAttack(ABC):
     def __init__(self, model: BaseModel, task: Literal["classification","regression"], epislon:Optional[float]):
         self.model = model
         self.task: Literal["classification","regression"] = task
         self.epsilon: Optional[float] = epislon
-
+        self.stats = StatCollector(obj=self,comment="Calls of Generate of attack")
     """
     Call beforehand in order to setup the attack. (e.g. finding best parameters)
     """
@@ -29,8 +29,10 @@ class BaseAttack(ABC):
     def generate(self, x: np.ndarray) -> np.ndarray:
         x = np.asarray(x)
         if x.ndim == 2:
+            self.stats(x.shape[0])
             return np.asarray([self._generate(s) for s in x])
         else:
+            self.stats()
             return self._generate(x)
 
     @abstractmethod
@@ -56,12 +58,12 @@ class BaseAttack(ABC):
         return np.abs(p - p_adv)
     
     @overload
-    def is_attack_okay(self, X:np.ndarray, X_adv:np.ndarray, epsilon:Optional[float]=None) -> tuple[bool, int]:
+    def is_attack_valid(self, X:np.ndarray, X_adv:np.ndarray, epsilon:Optional[float]=None) -> tuple[bool, int]:
         pass
     @overload
-    def is_attack_okay(self, X:pd.DataFrame, X_adv:pd.DataFrame, epsilon:Optional[float]=None) -> tuple[bool, int]:
+    def is_attack_valid(self, X:pd.DataFrame, X_adv:pd.DataFrame, epsilon:Optional[float]=None) -> tuple[bool, int]:
         pass
-    def is_attack_okay(self, X, X_adv, epsilon=None):
+    def is_attack_valid(self, X, X_adv, epsilon=None):
         # prediction distance
         p_dist = self._prediction_distance(X,X_adv)
         # epsilon
@@ -71,5 +73,3 @@ class BaseAttack(ABC):
         okays:np.ndarray = p_dist<=epsilon
         # return ob okay; num_feature/num_samples okay
         return okays.all(axis=-1), okays.sum(axis=-1)
-    
-    def attack
