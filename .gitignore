@@ -223,5 +223,8 @@ __marimo__/
 # Prisoners
 !compas_recidivism_racial_bias
 
+# Housing Price Regression
+!housing.csv
+
 # macos
 *.DS_Store
