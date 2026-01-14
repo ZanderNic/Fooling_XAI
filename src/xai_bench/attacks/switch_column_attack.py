@@ -13,8 +13,8 @@ class ColumnSwitchAttack(BaseAttack):
     model: the model to use for fitting (finding best switches)
     task: classification or regression, passed on to model.predict
     """
-    def __init__(self, model:BaseModel, task: Literal["classification","regression"]):
-        super().__init__(model, task=task)
+    def __init__(self, model:BaseModel, task: Literal["classification","regression"], epsilon:Optional[float]=None):
+        super().__init__(model, task=task,epislon=epsilon,stats=[self,"Swtich attack"])
         self.top_combi: Optional[list] = None
     
     """
@@ -66,6 +66,7 @@ class ColumnSwitchAttack(BaseAttack):
     max_tries: If not none, pick randomly from permutations until max_tries is reached (with possible repeats). Usefull if n_switches is high, as number of combinations is (n_switches)!
     """
     def fit(self, dataset:BaseDataset, n_switches:int, max_tries:Optional[int]=None, numerical_only:bool=True):
+        self.stats("fit")
         assert dataset.X_train is not None and dataset.y_train is not None, "Dataset needs to be loaded"
         assert n_switches>=2, "One is not an option"
         assert n_switches<=len(dataset.X_train.columns), "Cant switch more columns than the dataset has"
@@ -132,4 +133,6 @@ class ColumnSwitchAttack(BaseAttack):
     def _generate(self, x: np.ndarray) -> np.ndarray:
         if self.top_combi is None:
             raise RuntimeError("Fit the attack first before generating adverserial data.")
-        return self._switch_columns(x,self.top_combi) # type: ignore
+        switched = self._switch_columns(x,self.top_combi)
+        valid, _ = self.is_attack_valid(np.expand_dims(x,axis=0),np.expand_dims(switched,axis=0),self.epsilon)
+        return  switched if valid else x

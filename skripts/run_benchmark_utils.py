@@ -8,7 +8,9 @@ from pathlib import Path
 from typing import Any, Dict
 
 # 3-party imports
-
+import pandas as pd
+import numpy as np
+from rich.progress import track
 
 # projekt imports
 from xai_bench.base import BaseAttack, BaseDataset, BaseExplainer, BaseMetric, BaseModel
@@ -95,6 +97,7 @@ def load_attack(
     explainer: BaseExplainer,
     metric: BaseMetric,
     seed: int,
+    epsilon: float
 ) -> BaseAttack:
     """
         Instantiate and return an attack according to the selected attack string.
@@ -106,6 +109,7 @@ def load_attack(
         attack =  DistributionShiftAttack(
             dataset=dataset,
             model=model,
+            
             # explainer=explainer,  # TODO !!!!!!!11
             # metric=metric,
             # random_state=seed,
@@ -119,13 +123,14 @@ def load_attack(
         from xai_bench.attacks.switch_column_attack import ColumnSwitchAttack
         attack =  ColumnSwitchAttack(
             model=model,
-            task= dataset.task
+            task= dataset.task,
+            epsilon=epsilon
             #explainer=explainer,
             #metric=metric,
             #random_state=seed,
         )
         
-        attack.fit(dataset=dataset, n_switches=5, max_tries=10000, numerical_only=True)
+        attack.fit(dataset=dataset, n_switches=5, max_tries=1000, numerical_only=True)
         return attack
     
     if attack_string == "DataPoisoningAttack":
@@ -177,3 +182,19 @@ def save_result_json(path: Path, payload: Dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, ensure_ascii=False)
+
+
+def get_attack_success(X:np.ndarray,X_adv:np.ndarray) -> tuple[np.ndarray, int, float]: 
+    assert X.shape == X_adv.shape, "Must have same shape"
+    mask = X==X_adv
+    return mask.all(axis=1), int(mask.all(axis=1).sum()), float(mask.all(axis=1).sum()/len(X))
+
+def calcualte_metrics(X_exp:np.ndarray, X_adv_exp:np.ndarray, METRICS:dict)->dict:
+    explain_scores: Dict[str, dict] = {}
+    for name, MetricCls in track(
+        METRICS.items(), description="Caluclating Explaination scores", transient=True
+    ):
+        m: BaseMetric = MetricCls()
+        s = m.compute(X_exp, X_adv_exp)
+        explain_scores[name] = {"mean": float(s.mean()), "std": float(s.std())}
+    return explain_scores

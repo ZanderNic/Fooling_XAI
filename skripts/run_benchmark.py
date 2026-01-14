@@ -5,7 +5,7 @@ from rich import print as rich_print
 from rich.progress import track
 
 try:
-    import xai_bench
+    import xai_bench  # noqa: F401
 except ModuleNotFoundError:
     # in case module not correcltyloaded hardcode path
     rich_print(
@@ -28,12 +28,14 @@ import numpy as np
 # projekt imports
 from xai_bench.console import console, RUN_TEXT, TC
 from xai_bench.base import BaseDataset, BaseMetric
+from xai_bench.stat_collector import StatCollector
 
 # datasets
 from xai_bench.datasets.credit_dataset import CreditDataset
 from xai_bench.datasets.heart_dataset import HeartDataset
-from xai_bench.datasets.heart_failure import Heart_Failure
-from xai_bench.datasets.prisoners import PrisonersDataset
+from xai_bench.datasets.prisoners import PrisoneresDataset
+from xai_bench.datasets.housing import HousingDataset
+from xai_bench.datasets.covtype_forest import ForestDataset
 
 # metrics
 from xai_bench.metrics.cosine_metric import CosineMetric
@@ -47,14 +49,17 @@ from run_benchmark_utils import (
     load_attack,
     now_utc_iso,
     timed_call,
+    get_attack_success,
+    calcualte_metrics
 )
 
 
 DATASETS = {
-    "heart-uci": HeartDataset,
-    "heart-failure": Heart_Failure,
+    "heart_uci": HeartDataset,
+    "housing": HousingDataset,
     "credit": CreditDataset,
-    "prisoners": PrisonersDataset,
+    "prisoners": PrisoneresDataset,
+    "forest": ForestDataset
 }
 
 METRICS = {
@@ -76,6 +81,7 @@ def run(
     metric: BaseMetric,
     seed: int,
     num_samples: int = 1000,
+    epsilon: float = 0.05,
 ):
     """ """
 
@@ -85,21 +91,21 @@ def run(
     console.print(f"{RUN_TEXT} Loaded model: ", model_name)
 
     # fit model
-    assert dataset.X_train is not None and dataset.y_train is not None, (
+    assert dataset.X_train_scaled is not None and dataset.y_train is not None, (
         "Something went wrong with the dataset"
     )
     console.print(dataset.features,dataset.feature_mapping)
     with console.status(f"{TC} Fitting Model", spinner="shark"):
-        model.fit(dataset.X_train.values, dataset.y_train.values)
+        model.fit(dataset.X_train_scaled.values, dataset.y_train.values)
     console.print(f"{RUN_TEXT} Fitted Model ")
 
     # predict on test and calucalte accuracy
-    assert dataset.y_test is not None and dataset.X_test is not None, (
+    assert dataset.y_test is not None and dataset.X_test_scaled is not None, (
         "Something went wrong with the dataset"
     )
     with console.status(f"{TC} Calculating accuracy", spinner="shark"):
         acc = accuracy_score(
-            dataset.y_test.values, model.predict(dataset.X_test.values)
+            dataset.y_test.values, model.predict(dataset.X_test_scaled.values)
         )
     console.print(f"{RUN_TEXT} Calculated accuracy")
 
@@ -112,7 +118,7 @@ def run(
     assert dataset.features is not None, "Something went wrong with the dataset"
     with console.status(f"{TC} Fitting explainer", spinner="shark"):
         _, t_exp_fit = timed_call(
-            explainer.fit, dataset.X_train.values, model, dataset.features
+            explainer.fit, dataset.X_train_scaled.values, model, dataset.features
         )
     console.print(f"{RUN_TEXT} Fitted Explainer")
 
@@ -126,14 +132,15 @@ def run(
             explainer=explainer,
             metric=metric,
             seed=seed,
+            epsilon=epsilon
         )
     console.print(f"{RUN_TEXT} Loaded Attack")
 
     # how many samples to get the score
-    if len(dataset.X_test) <= num_samples:
-        X_test = dataset.X_test
+    if len(dataset.X_test_scaled) <= num_samples:
+        X_test = dataset.X_test_scaled
     else:
-        X_test = dataset.X_test.sample(n=num_samples)
+        X_test = dataset.X_test_scaled.sample(n=num_samples)
 
 
     with console.status(f"{TC} Generate attack", spinner="shark"):
@@ -160,15 +167,19 @@ def run(
         x_adv_exp = explainer.explain(X_adv)
     console.print(f"{RUN_TEXT} All X explained")
 
-    explain_scores: Dict[str, dict] = {}
-    for name, MetricCls in track(
-        METRICS.items(), description="Caluclating Explaination scores", transient=True
-    ):
-        m: BaseMetric = MetricCls()
-        s = m.compute(x_real_exp, x_adv_exp)
-        explain_scores[name] = {"mean": float(s.mean()), "std": float(s.std())}
+    # get attack success
+    mask, succ_count, succ_rate = get_attack_success(X_test.to_numpy(),X_adv)
+
+    with console.status(f"{TC} Calcualting Scores on ALL data and only successfull attacks", spinner="shark"):
+        explain_scores_all = calcualte_metrics(x_real_exp,x_adv_exp,METRICS)
+        if succ_count>1:
+            explain_scores_on_success_only = calcualte_metrics(x_real_exp[~mask],x_adv_exp[~mask],METRICS)
+        else:
+            explain_scores_on_success_only = {"No metrics possible": "No successfull attacks"}
     console.print(f"{RUN_TEXT} All explaination scores calcualted")
 
+    stats = StatCollector.collect(model,attack,explainer)
+    console.print(stats[0])
 
     result = {
         "meta": {
@@ -181,16 +192,22 @@ def run(
             "explainer": explainer.__class__.__name__,
             "selected_metric_for_attack": metric.__class__.__name__,
             "num_samples": int(len(X_test)),
-            "accuracy": acc, # accuracy of model prediction on X test
-            "attack_accuracy": predict_accuracy,  # acucracy of model preduction on attacked X test
-            "model_attack_fidelity": model_attack_fidelity,  # fidelity between model prediction on X test and attacked X test
         },
         "timing": {
             "explainer_fit": asdict(t_exp_fit),
             "attack_fit": asdict(t_attack_fit),
             "attack_generate": asdict(t_generate)
         },
-        "explain_scores": explain_scores,
+        "results":{
+            "accuracy": acc, # accuracy of model prediction on X test
+            "attack_accuracy": predict_accuracy,  # acucracy of model preduction on attacked X test
+            "model_attack_fidelity": model_attack_fidelity,  # fidelity between model prediction on X test and attacked X test
+            "attack_success_rate": succ_rate,
+            "attack_success_count": succ_count,
+        },
+        "explain_scores_on_all": explain_scores_all,
+        "explain_scores_on_success_only": explain_scores_on_success_only,
+        "stats":stats[1]
     }
 
     return result

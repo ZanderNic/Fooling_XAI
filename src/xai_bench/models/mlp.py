@@ -64,7 +64,7 @@ class TorchMLP(BaseModel):
         device: Optional[Union[str, torch.device]] = None,
         seed: int = 0,
     ):
-        super().__init__(task)
+        super().__init__(task,stats=(self,"TorchMLp"))
 
         if self.task == "classification":
             if not isinstance(num_classes, int) or num_classes < 2:
@@ -93,6 +93,7 @@ class TorchMLP(BaseModel):
         self.num_classes = num_classes
 
     def fit(self, X, y):
+        self.stats("fit",X)
         Xn = _to_numpy(X)
         yn = _check_1d_vector(y)
 
@@ -131,6 +132,7 @@ class TorchMLP(BaseModel):
 
     @torch.no_grad()
     def predict_proba(self, X) -> np.ndarray:
+        self.stats("predict_proba",X)
         if self.task != "classification":
             raise NotImplementedError("predict_proba is only defined for classification models.")
         
@@ -149,7 +151,7 @@ class TorchMLP(BaseModel):
 
     @torch.no_grad()
     def predict_scalar(self, X) -> np.ndarray:
-        
+        self.stats("predict_scalar",X)
         if self.task != "regression":
             raise NotImplementedError("predict_scalar is only defined for regression models.")
         

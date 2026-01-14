@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Literal
 import numpy as np
 
+from xai_bench.stat_collector import StatCollector
 
 
 
@@ -41,10 +42,11 @@ class BaseModel(ABC):
         - No task switching at runtime
     """
 
-    def __init__(self, task: Literal["classification","regression"]):
+    def __init__(self, task: Literal["classification","regression"], stats:tuple):
         if task not in ("classification", "regression"):
             raise ValueError(f"task must be 'classification' or 'regression' but is {task}")
         self.task:Literal["classification","regression"] = task
+        self.stats = StatCollector(stats[0],stats[1])
 
 
     @abstractmethod

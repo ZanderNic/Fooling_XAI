@@ -51,6 +51,7 @@ class LimeTabularAdapter(BaseExplainer):
                 random_state:
                     Random seed forwarded to the LIME explainer to improve reproducibility.
         """
+        super().__init__(stats=(self,"Lime Explainer"))
         self.dataset = dataset
         self.num_samples = int(num_samples)
         self.num_features = num_features 
@@ -81,6 +82,7 @@ class LimeTabularAdapter(BaseExplainer):
                     Feature specification. Must expose:
                     list[str] of length d
         """
+        self.stats("fit")
         self.reference_data = reference_data
         self.model = model
         self.features = features
@@ -137,7 +139,7 @@ class LimeTabularAdapter(BaseExplainer):
                     If the explainer has not been initialized via `fit()`.
         """
         assert self._lime is not None, "Call fit() first."
-
+        self.stats("explain",X.shape[0] if X.ndim==2 else 1)
         model_prediction = self.model.predict(X)
 
         if self.model.task == "classification":
