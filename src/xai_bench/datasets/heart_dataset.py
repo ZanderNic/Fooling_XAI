@@ -15,7 +15,7 @@ class HeartDataset(BaseDataset):
         self.target = "condition"
         self.task = "classification"
         
-        path = str(path) if path is not None else f"{Path(__file__).parent}/heart_dataset.csv" # "src/xai_bench/datasets/heart.csv"
+        path = str(path) if path is not None else f"{Path(__file__).parent}/heart.csv"
     
         super().__init__(path, task=self.task, **kwargs)
 

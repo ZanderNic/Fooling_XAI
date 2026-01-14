@@ -138,12 +138,13 @@ def load_attack(
         attack =  DataPoisoningAttack(
             dataset=dataset,
             model=model,
+            explainer=explainer,
             task= dataset.task,
+            epsilon=epsilon,
             random_state=seed
         )
-        
+
         attack.fit(
-            explainer=explainer,
             N_GEN=1,  # for testing
             N_POP=10,
             N_SAMPLE=3,
@@ -153,7 +154,8 @@ def load_attack(
             P_COMBINE=0.1,
             DRIFT_THRESHOLD=0.1,
             DRIFT_CONFIDENCE=0.95,
-            EARLY_STOPPING_PATIENCE=7
+            EARLY_STOPPING_PATIENCE=7,
+            EXPLAINER_NUM_SAMPLES=100
         )
 
         return attack

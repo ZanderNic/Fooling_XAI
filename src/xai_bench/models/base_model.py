@@ -113,12 +113,12 @@ class BaseModel(ABC):
         Regression:
             - Calls predict_scalar(X)
             - Returns scalar predictions directly
-            - Output shape: (n,)
+            - Output shape: (n, 1)
         """
         if self.task == "classification":
             return self.predict_proba(X)
         # regression
-        return self.predict_scalar(X)
+        return self.predict_scalar(X).reshape(-1, 1)
 
     def predict_proba(self, X) -> np.ndarray:
         """

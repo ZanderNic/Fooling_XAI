@@ -230,7 +230,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    console.print(f"[#69db88][RUN][/#69db88]{TC}Starting new run with: [/]", args)
+    console.print(f"[#69db88][RUN][/#69db88]{TC} Starting new run with: [/]", args)
     result = run(
         dataset=DATASETS[args.dataset](),
         model_name=args.model,
