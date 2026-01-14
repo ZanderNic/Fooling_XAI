@@ -2,16 +2,17 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 from xai_bench.base import BaseModel
-from typing import Literal, overload
+from typing import Literal, overload, Optional
 from numbers import Number
 import pandas as pd
 from jaxtyping import Shaped
 
 
 class BaseAttack(ABC):
-    def __init__(self, model: BaseModel, task: Literal["classification","regression"]):
+    def __init__(self, model: BaseModel, task: Literal["classification","regression"], epislon:Optional[float]):
         self.model = model
         self.task: Literal["classification","regression"] = task
+        self.epsilon: Optional[float] = epislon
 
     """
     Call beforehand in order to setup the attack. (e.g. finding best parameters)
@@ -53,15 +54,18 @@ class BaseAttack(ABC):
         return np.abs(p - p_adv)
     
     @overload
-    def is_attack_okay(self, X:np.ndarray, X_adv:np.ndarray, epsilon:float) -> tuple[bool, int]:
+    def is_attack_okay(self, X:np.ndarray, X_adv:np.ndarray, epsilon:Optional[float]=None) -> tuple[bool, int]:
         pass
     @overload
-    def is_attack_okay(self, X:pd.DataFrame, X_adv:pd.DataFrame, epsilon:float) -> tuple[bool, int]:
+    def is_attack_okay(self, X:pd.DataFrame, X_adv:pd.DataFrame, epsilon:Optional[float]=None) -> tuple[bool, int]:
         pass
-    def is_attack_okay(self, X, X_adv, epsilon):
+    def is_attack_okay(self, X, X_adv, epsilon=None):
         # prediction distance
         p_dist = self._prediction_distance(X,X_adv)
         # epsilon
+        if epsilon is None:
+            assert self.epsilon is not None, "At least one epsilon must be present"
+            epsilon = self.epsilon
         okays:np.ndarray = p_dist<=epsilon
         # return ob okay; num_feature/num_samples okay
         return okays.all(axis=-1), okays.sum(axis=-1)
