@@ -52,7 +52,7 @@ class HousingDataset(BaseDataset):
 
         start = df["date"].min()
         df["month_index"] = ((df["year"] - start.year) * 12 + (df["month"] - start.month))
-        
+
         df = df.drop(columns=["year", "date", "month"])
         return df
     
@@ -64,14 +64,17 @@ if __name__ == "__main__":
     #path = os.path.join("datasets", "heart.csv")
     path = "src/xai_bench/datasets/housing.csv"
 
-    dataset = HousingDataset(path)
+    df = pd.read_csv(path)
+    print(df)
+
+    # dataset = HousingDataset(path)
 
 
-    print("Raw data shape:", dataset.df_raw.values.shape)
-    print("X_train shape:", dataset.X_train.shape)
-    print("X_test shape:", dataset.X_test.shape)
+    # print("Raw data shape:", dataset.df_raw.values.shape)
+    # print("X_train shape:", dataset.X_train.shape)
+    # print("X_test shape:", dataset.X_test.shape)
 
-    print("Orignial columns:", dataset.df_raw.columns)
-    print("Column mapping:", dataset.feature_mapping)
+    # print("Orignial columns:", dataset.df_raw.columns)
+    # print("Column mapping:", dataset.feature_mapping)
 
     
