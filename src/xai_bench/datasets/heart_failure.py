@@ -1,15 +1,20 @@
 import pandas as pd
+from pathlib import Path
+
 from xai_bench.datasets.base_dataset import BaseDataset
 
 
 
 
 class Heart_Failure(BaseDataset):
-    def __init__(self, path: str, **kwargs):
+    def __init__(self, path: str = None, **kwargs):
         self.categorical_features = ['anaemia','diabetes','high_blood_pressure','sex','smoking']
         self.numerical_features = ['age', 'creatinine_phosphokinase', 'ejection_fraction', 'platelets', 'serum_creatinine', 'serum_sodium', 'time']
         self.target = "died"
         self.task = "classification"
+
+        path = str(path) if path is not None else f"{Path(__file__).parent}/heart_failure.csv"
+
         super().__init__(path, **kwargs)
 
     def read(self) -> pd.DataFrame:

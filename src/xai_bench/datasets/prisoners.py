@@ -33,13 +33,10 @@ class Prisoneres(BaseDataset):
     
 
 if __name__ == "__main__":
-    import os
-    #path = os.path.join("datasets", "heart.csv")
     path = "src/xai_bench/datasets/compas_recidivism_racial_bias.csv"
 
 
     df = pd.read_csv(path)
-    from sklearn.preprocessing import LabelEncoder
 
     dataset = Prisoneres(path)
 

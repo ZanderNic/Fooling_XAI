@@ -2,7 +2,7 @@
 from __future__ import annotations
 import json
 import time
-from dataclasses import  dataclass
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
@@ -25,7 +25,7 @@ def load_model(
         Instantiate and return a model according to the selected model string and dataset task.
     """
     assert dataset.task is not None, "Dataset task not defined"
-    assert dataset.X_train is not None, "Dataset has not x train"
+    assert dataset.X_train is not None, "Dataset has no X-train"
     if model_string == "CNN1D":
         from xai_bench.models.cnn_1d import TorchCNN1D
         return TorchCNN1D(
@@ -127,6 +127,31 @@ def load_attack(
         
         attack.fit(dataset=dataset, n_switches=5, max_tries=10000, numerical_only=True)
         return attack
+    
+    if attack_string == "DataPoisoningAttack":
+        from xai_bench.attacks.data_poisoning_attack import DataPoisoningAttack
+        attack =  DataPoisoningAttack(
+            dataset=dataset,
+            model=model,
+            task= dataset.task,
+            random_state=seed
+        )
+        
+        attack.fit(
+            explainer=explainer,
+            N_GEN=1,  # for testing
+            N_POP=10,
+            N_SAMPLE=3,
+            INIT_MUTATION_RATE=1.0,
+            INIT_STD=0.0,
+            P_ELITE=0.1,
+            P_COMBINE=0.1,
+            DRIFT_THRESHOLD=0.1,
+            DRIFT_CONFIDENCE=0.95,
+            EARLY_STOPPING_PATIENCE=7
+        )
+
+        return attack
 
     raise ValueError(f"Unknown attack type: {attack_string}")
 
@@ -152,5 +177,3 @@ def save_result_json(path: Path, payload: Dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, ensure_ascii=False)
-
-

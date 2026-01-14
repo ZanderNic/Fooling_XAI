@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from scipy.stats import kendalltau, norm
 import copy
 import time
@@ -241,7 +242,8 @@ class Individual:
         self,
         X_min: np.ndarray,
         X_max: np.ndarray,
-        X_cat: list
+        X_cat: list,
+        rng: np.random.Generator
     ):
         """
         Mutates the individual data instance by applying N(0, mutation_stds[i]) gaussian white
@@ -260,6 +262,9 @@ class Individual:
                 A list of numpy arrays representing the possible categories for a categorical
                 feature or None if the feature is continuous. The length of the list should be
                 equal to the number of features in the individual.
+            
+            rng (np.random.Generator):
+                A numpy random Generator instance for reproducibility.
         """
         assert isinstance(X_min, np.ndarray)
         assert isinstance(X_max, np.ndarray)
@@ -270,14 +275,15 @@ class Individual:
         assert isinstance(X_cat, list)
         assert len(X_cat) == self.data.shape[1]
         assert all(isinstance(cat, np.ndarray) or cat is None for cat in X_cat)
+        assert isinstance(rng, np.random.Generator)
 
         # create gaussian mutations with respective stds
         for feature in range(self.data.shape[1]):
             # decide which instances to mutate
-            mutation_mask = np.random.rand(self.data.shape[0]) < self.mutation_rate
+            mutation_mask = rng.random(self.data.shape[0]) < self.mutation_rate
 
             # generate mutations with feature std
-            mutations = np.random.normal(
+            mutations = rng.normal(
                 0,
                 self.mutation_stds[feature],
                 size=self.data.shape[0]
@@ -310,6 +316,7 @@ def init_population(
     mutation_rate: float = 0.1,
     initial_mutation_std: float = 0.3,
     individual_sample_size: int = 15,
+    rng: np.random.Generator = None
 ) -> list[list[Individual]]:
     """
     Initilizes a population of n individuals by mutating copies of the provided reference data.
@@ -330,6 +337,9 @@ def init_population(
             This rate is used to control the amount of mutation applied to each individual's data during
             initialization.
 
+        rng (np.random.Generator):
+            A numpy random Generator instance for reproducibility.
+
     Returns:
         list[list[Individual]]:
             A population of lists of Individual objects, where each list corresponds to an individual
@@ -348,11 +358,12 @@ def init_population(
     assert 0 <= initial_mutation_std <= 1
     assert isinstance(individual_sample_size, int)
     assert individual_sample_size > 0
+    assert isinstance(rng, np.random.Generator)
 
     population = []
 
     # determine random mutation stds for each individual
-    mutation_stds = np.abs(np.random.normal(
+    mutation_stds = np.abs(rng.normal(
         loc=initial_mutation_std,
         scale=0.015,
         size=(population_size, reference_data.shape[1])
@@ -377,7 +388,8 @@ def init_population(
                     ) else (
                         None
                     ) for feature in range(reference_data.shape[1])
-                ]
+                ],
+                rng = rng
             )
 
             individual_list.append(individual)
@@ -441,7 +453,7 @@ def population_fitness(
     reference_predictions: np.ndarray,
     drift_threshold: float = 0.5,
     drift_confidence: float = 0.95
-) -> np.ndarray:
+) -> tuple[np.ndarray, float]:
     """
     Computes the optimization metrics for a population of individuals. The metrics are based on 
     the individuals' explanation drift scores compared to reference explanations. The values are 
@@ -672,7 +684,8 @@ def select_elitists(
 
 def select_parent_indices(
     ranked_metrics: np.ndarray,
-    n_pairs: int
+    n_pairs: int,
+    rng: np.random.Generator
 ) -> np.ndarray:
     """
     Selects parent indices for crossover from the individuals in the population
@@ -688,6 +701,9 @@ def select_parent_indices(
         n_pairs (int):
             The number of parent pairs to select.
 
+        rng (np.random.Generator):
+            A numpy random Generator instance for reproducibility.
+
     Returns:
         np.ndarray:
             A 2D numpy array of shape (n_population, 2) containing pairs of selected parent indices
@@ -697,6 +713,7 @@ def select_parent_indices(
     assert ranked_metrics.ndim == 2
     assert isinstance(n_pairs, int)
     assert n_pairs > 0
+    assert isinstance(rng, np.random.Generator)
 
     # softmax weights for all individuals
     softmax = lambda x: np.exp(x) / np.sum(np.exp(x))
@@ -705,7 +722,7 @@ def select_parent_indices(
     individual_weights = softmax(-1 * (ranked_metrics[:, :2].sum(axis=1)))
 
     # determine parent pairs from all individuals
-    parent_pair_indices = np.random.choice(
+    parent_pair_indices = rng.choice(
         np.arange(ranked_metrics.shape[0]),
         size=(n_pairs, 2),
         replace=True,
@@ -716,7 +733,8 @@ def select_parent_indices(
 
 def crossover_parent_stds(
     dominant_fitness_metrics: np.ndarray,
-    recessive_fitness_metrics: np.ndarray
+    recessive_fitness_metrics: np.ndarray,
+    rng: np.random.Generator
 ) -> np.ndarray:
     """
     Performs crossover of standard deviations between the given parent individuals to produce
@@ -729,6 +747,9 @@ def crossover_parent_stds(
 
         recessive_fitness_metrics (np.ndarray):
             A numpy array of the form (||stds||, violation_measure, std_1, std_2, ..., std_n).
+
+        rng (np.random.Generator):
+            A numpy random Generator instance for reproducibility.
 
     Returns:
         np.ndarray:
@@ -753,7 +774,7 @@ def crossover_parent_stds(
     )
 
     # randomly select the feature indices to inherit from the dominant parent stds
-    dominant_features = np.random.choice(
+    dominant_features = rng.choice(
         n_features,
         size=dominant_feature_amount,
         replace=False
@@ -770,7 +791,7 @@ def crossover_parent_stds(
     offspring_stds[recessive_features] = recessive_fitness_metrics[2:][recessive_features]
 
     # mutation stds changes exp(N(0, 0.05))
-    std_changes = np.exp(np.random.normal(0, 0.05, size=n_features))
+    std_changes = np.exp(rng.normal(0, 0.05, size=n_features))
     # mutation stds = offspring_stds * std_changes
     offspring_stds *= std_changes
     offspring_stds = np.clip(
@@ -785,7 +806,8 @@ def produce_offspring(
     dominant_fitness_metrics: np.ndarray,
     recessive_fitness_metrics: np.ndarray,
     data: np.ndarray,
-    mutation_rate: float
+    mutation_rate: float,
+    rng: np.random.Generator
 ) -> Individual:
     """
     Produces a new offspring individual by inheriting and mutating the mutation rate
@@ -807,6 +829,9 @@ def produce_offspring(
         mutation_rate (float):
             A float value representing the mutation rate to be assigned to the offspring individual.
 
+        rng (np.random.Generator):
+            A numpy random Generator instance for reproducibility.
+
     Returns:
         Individual:
             A new individual representing the offspring produced from the inheritance. The standard
@@ -824,7 +849,7 @@ def produce_offspring(
     # determine the new mutation stds:
     new_mutation_stds = (dominant_fitness_metrics[2:] + recessive_fitness_metrics[2:]) / 2
     # mutation stds changes exp(N(0, 0.05))
-    std_changes = np.exp(np.random.normal(0, 0.05, size=new_mutation_stds.shape[0]))
+    std_changes = np.exp(rng.normal(0, 0.05, size=new_mutation_stds.shape[0]))
     # mutation stds = new_mutation_stds * std_changes
     new_mutation_stds *= std_changes
     new_mutation_stds = np.clip(
@@ -850,7 +875,8 @@ def produce_next_generation(
     X_data: np.ndarray = None,
     X_min: np.ndarray = None,
     X_max: np.ndarray = None,
-    X_cat: list = None
+    X_cat: list = None,
+    rng: np.random.Generator = None
 ) -> list[list[Individual]]:
     """
     Produces the next generation of individuals by selecting elitist individuals that are
@@ -889,6 +915,9 @@ def produce_next_generation(
             or None if the feature is continuous. The length of the list should be equal to the
             number of features in the individual.
 
+        rng (np.random.Generator):
+            A numpy random Generator instance for reproducibility.
+
     Returns:
         list[list[Individual]]:
             A population of lists of Individual objects, where each list corresponds to an individual
@@ -916,6 +945,7 @@ def produce_next_generation(
     assert isinstance(X_cat, list)
     assert len(X_cat) == current_population[0][0].data.shape[1]
     assert all(isinstance(cat, np.ndarray) or cat is None for cat in X_cat)
+    assert isinstance(rng, np.random.Generator)
 
     # read global mutation rate since it is identical for all individuals
     global_mutation_rate = current_population[0][0].mutation_rate
@@ -939,7 +969,8 @@ def produce_next_generation(
             elitist.mutate(
                 X_min = X_min,
                 X_max = X_max,
-                X_cat = X_cat
+                X_cat = X_cat,
+                rng = rng
             )
             sample.append(elitist)
         next_generation.append(sample)
@@ -950,7 +981,8 @@ def produce_next_generation(
     # select parent pairs for producing offsprings
     parent_pair_indices = select_parent_indices(
         ranked_metrics,
-        n_offsprings
+        n_offsprings,
+        rng
     )
 
     # produce an offspring for each parent pair
@@ -963,10 +995,11 @@ def produce_next_generation(
         parent_sorting = np.argsort(fitness_scores)
 
         # combine parents feature columns with probability p_combine
-        if np.random.rand() < p_combine:
+        if rng.random() < p_combine:
             offspring_stds = crossover_parent_stds(
                 dominant_fitness_metrics = ranked_metrics[parent_sorting[0]],
                 recessive_fitness_metrics = ranked_metrics[parent_sorting[1]],
+                rng = rng
             )
 
             offspring = Individual(
@@ -980,7 +1013,8 @@ def produce_next_generation(
                 dominant_fitness_metrics = ranked_metrics[parent_sorting[0]],
                 recessive_fitness_metrics = ranked_metrics[parent_sorting[1]],
                 data = X_data,
-                mutation_rate = global_mutation_rate            
+                mutation_rate = global_mutation_rate,
+                rng = rng
             )
 
         sample = []
@@ -989,7 +1023,8 @@ def produce_next_generation(
             individual_copy.mutate(
                 X_min = X_min,
                 X_max = X_max,
-                X_cat = X_cat
+                X_cat = X_cat,
+                rng = rng
             )
             sample.append(individual_copy)
 
@@ -1111,6 +1146,7 @@ def evolve_population(
     X_max: np.ndarray = None,
     X_cat: list = None,
     early_stopping_patience: int = 10,
+    rng: np.random.Generator = None
 ) -> tuple[np.ndarray, np.ndarray, EarlyStopping, list[tuple[np.ndarray, list[list[Individual]], float]], float]:
     """
     Evolves the given initial population over a specified number of generations
@@ -1170,6 +1206,9 @@ def evolve_population(
             An integer representing the number of consecutive generations to wait for
             improvement before stopping the evolution process early.
 
+        rng (np.random.Generator):
+            A numpy random Generator instance for reproducibility.
+
     Returns:
         tuple:
             A tuple containing:
@@ -1212,6 +1251,7 @@ def evolve_population(
     assert all(isinstance(cat, np.ndarray) or cat is None for cat in X_cat)
     assert isinstance(early_stopping_patience, int)
     assert early_stopping_patience > 0
+    assert isinstance(rng, np.random.Generator)
 
     try:
         time_start = time.time()
@@ -1280,7 +1320,8 @@ def evolve_population(
                 X_data,
                 X_min,
                 X_max,
-                X_cat
+                X_cat,
+                rng
             )
 
             print(f"--- produced next generation --- Time: {time.time() - generation_start_time:.2f}s")
@@ -1345,9 +1386,10 @@ class DataPoisoningAttack(BaseAttack):
         dataset: BaseDataset,
         model: BaseModel,
         task: Literal["classification","regression"]="classification",
+        random_state: int = None,
     ):
         """
-        Initializes the DataPoisoningAttack object with the specified dataset and model.
+        Initializes the DataPoisoningAttack object with the specified arguments.
 
         Args:
             dataset (BaseDataset):
@@ -1358,9 +1400,14 @@ class DataPoisoningAttack(BaseAttack):
 
             task (Literal["classification","regression"]):
                 The type of task the model is performing, either "classification" or "regression".
+
+            random_state (int):
+                An integer representing the random seed for reproducibility.
         """
         super().__init__(model, task)
         self.dataset = dataset
+
+        self.rng = np.random.default_rng(seed=random_state)
 
     def fit(
         self,
@@ -1443,7 +1490,10 @@ class DataPoisoningAttack(BaseAttack):
                 improvement before stopping the evolution process early. As improvement factors
                 are counted both a better internal fitness value of a standard deviation feature
                 distribution and an increased estimated probability of the explanation drift 
-                constraint above the desired confidence level. 
+                constraint above the desired confidence level.
+
+            random_state (int):
+                An integer representing the random seed for reproducibility.
         """
         assert isinstance(explainer, BaseExplainer)
         assert isinstance(N_GEN, int) and N_GEN > 0
@@ -1470,6 +1520,7 @@ class DataPoisoningAttack(BaseAttack):
             mutation_rate=INIT_MUTATION_RATE,
             initial_mutation_std=INIT_STD,
             individual_sample_size=N_SAMPLE,
+            rng=self.rng
         )
 
         # compute the reference explanation to compare the drift against
@@ -1492,7 +1543,8 @@ class DataPoisoningAttack(BaseAttack):
             X_min=self.X_min,
             X_max=self.X_max,
             X_cat=self.X_cat,
-            early_stopping_patience=EARLY_STOPPING_PATIENCE
+            early_stopping_patience=EARLY_STOPPING_PATIENCE,
+            rng=self.rng
         )
 
         # save the best found stds for data poisoning on the dataset
@@ -1501,8 +1553,8 @@ class DataPoisoningAttack(BaseAttack):
     def generate(
         self,
         x: np.ndarray,
-        scaled: bool = True
-    ):
+        scaled: bool = False
+    ) -> np.ndarray:
         """
         Generates poisoned data by applying gaussian white noise with the learned standard
         deviations to the specified dataset.
@@ -1523,25 +1575,27 @@ class DataPoisoningAttack(BaseAttack):
                 data.
         """
         assert hasattr(self, "scaled_attack_stds"), "The attack must be fitted before generating poisoned data."
-        assert isinstance(x, np.ndarray)
+        assert isinstance(x, np.ndarray) or isinstance(x, pd.DataFrame)
         assert x.ndim == 2
         assert x.shape[1] == self.scaled_attack_stds.shape[0]
 
+        if isinstance(x, pd.DataFrame):
+            x = x.values
+
         x_poisoned = x.copy()
 
-        # generate gaussian white noise with the learned stds
-        white_noise = np.random.normal(
-            loc=0.0,
-            scale=self.scaled_attack_stds,
-            size=x_poisoned.shape
-        )
-
-        # scale back to original data scale if necessary
-        if not scaled:
-            white_noise *= self.dataset.X_test.std(axis=0).values
-
-        # ensure categorical features remain valid after perturbation
         for feature in range(x.shape[1]):
+            # generate gaussian white noise with the learned stds
+            white_noise = self.rng.normal(
+                loc=0.0,
+                scale=self.scaled_attack_stds[feature],
+                size=x_poisoned.shape[0]
+            )
+
+            # scale back to original data scale if necessary
+            if not scaled:
+                white_noise *= self.dataset.X_test.values.std(axis=0)[feature]
+
             # categorical feature white noise mapping
             if self.X_cat[feature] is not None:
                 # map each continuous white noise value to the nearest category value
@@ -1552,7 +1606,7 @@ class DataPoisoningAttack(BaseAttack):
                 x_poisoned[:, feature] = mutations
             # continuous feature white noise application
             else:
-                x_poisoned[:, feature] += white_noise[:, feature]
+                x_poisoned[:, feature] += white_noise
 
         # clip the poisoned data to the feature bounds
         x_poisoned = np.clip(
@@ -1560,5 +1614,39 @@ class DataPoisoningAttack(BaseAttack):
             self.X_min,
             self.X_max
         )
+
+        return x_poisoned
+
+    def _generate(
+        self,
+        x: np.ndarray
+    ) -> np.ndarray:
+        """
+        Generates poisoned data by applying gaussian white noise with the learned standard
+        deviations to the specified dataset.
+
+        Args:
+            x (np.ndarray):
+                A 1D numpy array of shape (n_features,) representing the data to
+                be poisoned.
+        
+        Returns:
+            np.ndarray:
+                A 1D numpy array of shape (n_features,) representing the poisoned
+                data.
+        """
+        assert hasattr(self, "scaled_attack_stds"), "The attack must be fitted before generating poisoned data."
+        assert isinstance(x, np.ndarray) or isinstance(x, pd.DataFrame)
+        assert x.ndim == 1
+        assert x.shape[0] == self.scaled_attack_stds.shape[0]
+
+        if isinstance(x, pd.DataFrame):
+            x = x.values
+
+        # generate poisoned data using the public generate method
+        x_poisoned = self.generate(
+            x.reshape(1, -1),
+            scaled=False
+        ).reshape(-1)
 
         return x_poisoned

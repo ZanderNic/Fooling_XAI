@@ -33,7 +33,7 @@ from xai_bench.base import BaseDataset, BaseMetric
 from xai_bench.datasets.credit_dataset import CreditDataset
 from xai_bench.datasets.heart_dataset import HeartDataset
 from xai_bench.datasets.heart_failure import Heart_Failure
-from xai_bench.datasets.prisoners import PrisoneresDataset
+from xai_bench.datasets.prisoners import PrisonersDataset
 
 # metrics
 from xai_bench.metrics.cosine_metric import CosineMetric
@@ -54,7 +54,7 @@ DATASETS = {
     "heart-uci": HeartDataset,
     "heart-failure": Heart_Failure,
     "credit": CreditDataset,
-    "prisoners": PrisoneresDataset,
+    "prisoners": PrisonersDataset,
 }
 
 METRICS = {
@@ -64,14 +64,14 @@ METRICS = {
 }
 
 MODELS = ["CNN1D", "MLP", "RF"]
-ATTACKS = ["DistributionShiftAttack", "ColumnSwitchAttack"]
+ATTACKS = ["DistributionShiftAttack", "ColumnSwitchAttack", "DataPoisoningAttack"]
 EXPLAINER = ["Shap", "Lime"]
 
 
 def run(
     dataset: BaseDataset,
     model_name: Literal["CNN1D", "MLP", "RF"],
-    attack_name: Literal["DistributionShiftAttack", "ColumnSwitchAttack"],
+    attack_name: Literal["DistributionShiftAttack", "ColumnSwitchAttack", "DataPoisoningAttack"],
     explainer_name: Literal["Shap", "Lime"],
     metric: BaseMetric,
     seed: int,
@@ -86,7 +86,7 @@ def run(
 
     # fit model
     assert dataset.X_train is not None and dataset.y_train is not None, (
-        "Sth went wwrong at with the dataset"
+        "Something went wrong with the dataset"
     )
     console.print(dataset.features,dataset.feature_mapping)
     with console.status(f"{TC} Fitting Model", spinner="shark"):
@@ -95,7 +95,7 @@ def run(
 
     # predict on test and calucalte accuracy
     assert dataset.y_test is not None and dataset.X_test is not None, (
-        "Sth went wrong wirh datatset"
+        "Something went wrong with the dataset"
     )
     with console.status(f"{TC} Calculating accuracy", spinner="shark"):
         acc = accuracy_score(
@@ -109,16 +109,17 @@ def run(
     console.print(f"{RUN_TEXT} Loaded Explainer")
 
     # fit explainer
-    assert dataset.features is not None, "Sth went wrong with dataset"
+    assert dataset.features is not None, "Something went wrong with the dataset"
     with console.status(f"{TC} Fitting explainer", spinner="shark"):
-        _, t_fit = timed_call(
+        _, t_exp_fit = timed_call(
             explainer.fit, dataset.X_train.values, model, dataset.features
         )
     console.print(f"{RUN_TEXT} Fitted Explainer")
 
     # get attack
     with console.status(f"{TC} Loading attack", spinner="shark"):
-        attack = load_attack(
+        attack, t_attack_fit = timed_call(
+            load_attack,
             attack_string=attack_name,
             dataset=dataset,
             model=model,
@@ -142,6 +143,12 @@ def run(
     with console.status(f"{TC} Calculating attack accuracy  ", spinner="shark"):
         predict_accuracy  = accuracy_score(
             dataset.y_test.values, model.predict(X_adv)
+        )
+    console.print(f"{RUN_TEXT} Calculated attack accuracy")
+
+    with console.status(f"{TC} Calculating model fidelity after attack  ", spinner="shark"):
+        model_attack_fidelity  = accuracy_score(
+            model.predict(X_test), model.predict(X_adv)
         )
     console.print(f"{RUN_TEXT} Calculated attack accuracy")
 
@@ -175,9 +182,14 @@ def run(
             "selected_metric_for_attack": metric.__class__.__name__,
             "num_samples": int(len(X_test)),
             "accuracy": acc, # accuracy of model prediction on X test
-            "attack_accuracy": predict_accuracy  # acucracy of model preduction on attacked X test
+            "attack_accuracy": predict_accuracy,  # acucracy of model preduction on attacked X test
+            "model_attack_fidelity": model_attack_fidelity,  # fidelity between model prediction on X test and attacked X test
         },
-        "timing": {"attack_generate": asdict(t_generate), "attack_fit": asdict(t_fit)},
+        "timing": {
+            "explainer_fit": asdict(t_exp_fit),
+            "attack_fit": asdict(t_attack_fit),
+            "attack_generate": asdict(t_generate)
+        },
         "explain_scores": explain_scores,
     }
 
@@ -201,7 +213,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    console.print(f"[#69db88]\[RUN][/#69db88]{TC}Starting new run with: [/]", args)
+    console.print(f"[#69db88][RUN][/#69db88]{TC}Starting new run with: [/]", args)
     result = run(
         dataset=DATASETS[args.dataset](),
         model_name=args.model,
@@ -228,4 +240,4 @@ if __name__ == "__main__":
     with out_path.open("w", encoding="utf-8") as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
 
-    console.print(f"[bold cyan]\[OK][/] Results saved to: [italic #9c9c9c]{out_path}[/]",highlight=False)
+    console.print(f"[bold cyan][OK][/] Results saved to: [italic #9c9c9c]{out_path}[/]",highlight=False)
