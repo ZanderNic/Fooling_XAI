@@ -3,6 +3,8 @@ import pandas as pd
 from scipy.stats import kendalltau, norm
 import copy
 import time
+import os
+from pathlib import Path
 
 import json
 from datetime import datetime, timezone
@@ -476,8 +478,8 @@ def population_fitness(
             A population of individuals represented as a list of samples of Individual objects where
             each sample share the same underlying standard deviation for mutating the individuals' data.
 
-        explainer (shap.Explainer):
-            A SHAP explainer object that can compute SHAP values for instances.
+        explainer (BaseExplainer):
+            An explainer object that can compute feature importance values for instances.
 
         reference_explanations (np.ndarray):
             A 2D numpy array of shape (n_datapoints, n_features) containing the reference explanation
@@ -533,8 +535,10 @@ def population_fitness(
     section_time = time.time()  # LOGGING
 
     # produce SHAP explanations for the entire population
-    explanations = explainer.explain(
-        pop
+    explanations = explainer.explain_parallel(
+        pop,
+        n_workers=os.cpu_count(),
+        batch_size=48
     )
 
     print(f"\tProducing explanations took {time.time() - section_time} seconds.")
@@ -580,7 +584,6 @@ def population_fitness(
         valid_mask = prediction_mask,
         threshold = drift_threshold
     )
-
     print(f"\tEstimated probabilities:\n{estimated_probabilities}")
 
     print(f"\tCalculating estimated probs took {time.time() - section_time} seconds.")
@@ -592,8 +595,9 @@ def population_fitness(
         sample_size = valid_scores_amount,
         confidence=0.95
     )
-    mean_probability = lcb.mean()
+    print(f"\tLCB values:\n{lcb}")
 
+    mean_probability = lcb.mean()
     print(f"\tLCB mean: {mean_probability}")
 
     print(f"\tCalculating LCB took {time.time() - section_time} seconds.")
@@ -949,6 +953,8 @@ def produce_next_generation(
     assert 0 < elite_prop < 1
     assert isinstance(p_combine, float)
     assert 0 <= p_combine <= 1
+    assert isinstance(X_data, np.ndarray)
+    assert X_data.ndim == 2
     assert isinstance(X_min, np.ndarray)
     assert X_min.ndim == 1
     assert X_min.shape[0] == current_population[0][0].data.shape[1]
@@ -1170,8 +1176,8 @@ def evolve_population(
         initial_population (list[Individual]):
             A list of Individual objects representing the initial population.
 
-        explainer (shap.Explainer):
-            A SHAP explainer object that can compute SHAP values for instances built with the
+        explainer (BaseExplainer):
+            An explainer object that can compute feature importance values for instances built with the
             model and initial data to be evaluated.
 
         reference_explanations (np.ndarray):
@@ -1539,7 +1545,7 @@ class DataPoisoningAttack(BaseAttack):
         self.explainer.num_samples = EXPLAINER_NUM_SAMPLES
         
         # determine feature bounds and categorical feature information
-        self.X_min, self.X_max = np.array(list(self.dataset.feature_ranges.values())).T
+        self.X_min, self.X_max = np.array(list(self.dataset..values())).T
         cat_mask = self.dataset.categorical_feature_mask
         self.X_cat = list(self.dataset.scaled_categorical_values.values())
 
@@ -1585,10 +1591,11 @@ class DataPoisoningAttack(BaseAttack):
         # save the results of the evolution process to json
         results = {
             "generation_stds": gen_stds.tolist(),
-            "generation_fitnesses": gen_fitnesses.tolist(),
             "best_stds": early_stopping.best_stds.tolist(),
+            "generation_fitnesses": gen_fitnesses.tolist(),
             "best_fitness": early_stopping.best_fitness,
-            "best_mean_probability": early_stopping.mean_probability,
+            "mean_probabilities": [log[2] for log in logging],
+            "last_mean_probability": early_stopping.mean_probability,
             "total_time_seconds": total_time,
             "meta": {
                 "N_GEN": N_GEN,
@@ -1608,7 +1615,8 @@ class DataPoisoningAttack(BaseAttack):
         }
 
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-        with open(f"./results/DataPoisoningAttack_evolution_results_{timestamp}.json", "w") as f:
+        filepath = Path(Path(__file__).parent, '..', '..', '..', 'skripts', 'results', f'DataPoisoningAttack_evolution_results_{timestamp}.json')
+        with open(filepath, "w") as f:
             json.dump(results, f, indent=4)
 
         # restore original explainer number of samples

@@ -14,7 +14,7 @@ class ColumnSwitchAttack(BaseAttack):
     task: classification or regression, passed on to model.predict
     """
     def __init__(self, model:BaseModel, task: Literal["classification","regression"], epsilon:Optional[float]=None):
-        super().__init__(model, task=task,epislon=epsilon,stats=[self,"Swtich attack"])
+        super().__init__(model, task=task,epsilon=epsilon,stats=[self,"Swtich attack"])
         self.top_combi: Optional[list] = None
     
     """
