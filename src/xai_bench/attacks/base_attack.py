@@ -39,7 +39,7 @@ class BaseAttack(ABC):
         pass
 
     """
-    Will calcualte L1 distance and return mean distance on dataset
+    Will calculate L1 distance and return mean distance on dataset
     """
     @overload
     def _prediction_distance(self, X:np.ndarray, X_adv:np.ndarray) -> np.ndarray:

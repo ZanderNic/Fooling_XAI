@@ -41,6 +41,7 @@ from xai_bench.datasets.covtype_forest import ForestDataset
 from xai_bench.metrics.cosine_metric import CosineMetric
 from xai_bench.metrics.spearmen_metric import SpearmanMetric
 from xai_bench.metrics.wasserstein_metric import WassersteinMetric
+from xai_bench.metrics.l2_metric import L2Metric
 
 # utils imports
 from run_benchmark_utils import (
@@ -50,7 +51,7 @@ from run_benchmark_utils import (
     now_utc_iso,
     timed_call,
     get_attack_success,
-    calcualte_metrics
+    calculate_metrics
 )
 
 
@@ -63,20 +64,21 @@ DATASETS = {
 }
 
 METRICS = {
+    "L2": L2Metric,
     "Cosine": CosineMetric,
     "Spearman": SpearmanMetric,
     "Wasserstein": WassersteinMetric,
 }
 
 MODELS = ["CNN1D", "MLP", "RF"]
-ATTACKS = ["DistributionShiftAttack", "ColumnSwitchAttack", "DataPoisoningAttack", "GreedyHillClimb"]
+ATTACKS = ["RandomWalkAttack", "ColumnSwitchAttack", "DataPoisoningAttack", "GreedyHillClimb"]
 EXPLAINER = ["Shap", "Lime"]
 
 
 def run(
     dataset: BaseDataset,
     model_name: Literal["CNN1D", "MLP", "RF"],
-    attack_name: Literal["DistributionShiftAttack", "ColumnSwitchAttack", "DataPoisoningAttack"],
+    attack_name: Literal["RandomWalkAttack", "ColumnSwitchAttack", "DataPoisoningAttack"],
     explainer_name: Literal["Shap", "Lime"],
     metric: BaseMetric,
     seed: int,
@@ -171,12 +173,12 @@ def run(
     mask, succ_count, succ_rate = get_attack_success(X_test.to_numpy(),X_adv)
 
     with console.status(f"{TC} Calcualting Scores on ALL data and only successfull attacks", spinner="shark"):
-        explain_scores_all = calcualte_metrics(x_real_exp,x_adv_exp,METRICS)
+        explain_scores_all = calculate_metrics(x_real_exp,x_adv_exp,METRICS)
         if succ_count>1:
-            explain_scores_on_success_only = calcualte_metrics(x_real_exp[~mask],x_adv_exp[~mask],METRICS)
+            explain_scores_on_success_only = calculate_metrics(x_real_exp[mask],x_adv_exp[mask],METRICS)
         else:
             explain_scores_on_success_only = {"No metrics possible": "No successfull attacks"}
-    console.print(f"{RUN_TEXT} All explaination scores calcualted")
+    console.print(f"{RUN_TEXT} All explaination scores calculated")
 
     stats = StatCollector.collect(model,attack,explainer)
     console.print(stats[0])
