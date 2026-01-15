@@ -116,7 +116,7 @@ class TrainLookupAttack(BaseAttack):
 
         sorted_idx = np.argsort(pred_distances)
         candidate_idx = sorted_idx[: self.max_candidates]
-        candidates = self.X_train[candidate_idx]
+        candidates = self.X_train.iloc[candidate_idx]
 
         valid_mask, _ = self.is_attack_valid(
             X=np.repeat(x_2d, len(candidates), axis=0),
@@ -128,11 +128,16 @@ class TrainLookupAttack(BaseAttack):
             return x
 
         exp_x = self.explainer.explain(x_2d, self.num_samples_explainer)
-        exp_candidates = self.explainer.explain(candidates, self.num_samples_explainer)
+        
+        candidates_array = candidates.to_numpy()
+
+        exp_candidates = np.array([
+            self.explainer.explain(candidates_array[i].reshape(1, -1), self.num_samples_explainer)
+            for i in range(len(candidates_array))
+        ])
 
         scores = self.metric.compute(np.repeat(exp_x, len(candidates), axis=0), exp_candidates)
 
         best_idx = np.argmax(scores)
-        best_candidate = candidates[best_idx]
-
+        best_candidate = candidates_array[best_idx]
         return best_candidate

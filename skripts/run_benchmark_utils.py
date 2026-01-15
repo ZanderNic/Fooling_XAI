@@ -164,7 +164,7 @@ def load_attack(
             epsilon=epsilon,
             seed=seed,
             task=dataset.task,
-            max_candidates=10
+            max_candidates=100
         )
         
         attack.fit()
