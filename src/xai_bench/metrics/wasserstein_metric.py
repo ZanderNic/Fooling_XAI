@@ -32,10 +32,9 @@ class WassersteinMetric(BaseMetric):
         e2 = self.normalizer(e2)
         c1 = np.cumsum(e1)
         c2 = np.cumsum(e2)
-        d = np.sum(np.abs(c1 - c2))
-        return d / len(e1)
-    
+        return np.sum(np.abs(c1 - c2))
 
+    
 if __name__ == "__main__":
     exp_1 = np.array([0.4, 0.3, 0.2])
     exp_2 = np.array([-0.4, 0.3, 0.2])
