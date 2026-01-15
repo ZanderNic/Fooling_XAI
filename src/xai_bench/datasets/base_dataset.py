@@ -80,26 +80,38 @@ class BaseDataset(ABC):
         )
 
         # scale numerical features
-        self.scaler = StandardScaler()
-        X_train_scaled = self.scaler.fit_transform(self.X_train[self.numerical_features])
-        X_test_scaled = self.scaler.transform(self.X_test[self.numerical_features])
+        if len(self.numerical_features) > 0:
 
-        self.X_train_scaled = pd.concat([
-            pd.DataFrame(
-                X_train_scaled,
-                columns=self.numerical_features, 
-                index=self.X_train.index
-            ),
-            self.X_train.drop(self.numerical_features, axis=1)
-        ], axis=1)
-        self.X_test_scaled = pd.concat([
-            pd.DataFrame(
-                X_test_scaled,
-                columns=self.numerical_features,
-                index=self.X_test.index
-            ),
-            self.X_test.drop(self.numerical_features, axis=1)
-        ], axis=1)
+            self.scaler = StandardScaler()
+            X_train_scaled = self.scaler.fit_transform(self.X_train[self.numerical_features])
+            X_test_scaled = self.scaler.transform(self.X_test[self.numerical_features])
+
+            # traindata scaled
+            self.X_train_scaled = pd.concat([
+                pd.DataFrame(
+                    X_train_scaled,
+                    columns=self.numerical_features, 
+                    index=self.X_train.index
+                ),
+                self.X_train.drop(self.numerical_features, axis=1)
+            ], axis=1)
+
+            # testdata scaled
+            self.X_test_scaled = pd.concat([
+                pd.DataFrame(
+                    X_test_scaled,
+                    columns=self.numerical_features,
+                    index=self.X_test.index
+                ),
+                self.X_test.drop(self.numerical_features, axis=1)
+            ], axis=1)
+        else:
+            # no numerical features
+            self.scaler = None
+            self.X_test_scaled = self.X_test.copy()
+            self.X_train_scaled = self.X_train.copy()
+
+
 
         self.features = Features(list(self.X_full.columns))
         
