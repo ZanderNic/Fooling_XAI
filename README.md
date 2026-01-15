@@ -67,7 +67,6 @@ Our Recommendation is to install the package into a clean virtual environment
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e .
 ```
 
 ### 2) Install the project in editable mode
@@ -106,7 +105,8 @@ python skripts/run_benchmark.py <dataset> <model> <attack> <explainer> <metric> 
 - `<attack>`: attack method (e.g. `GreedyHillClimb`, `ColumnSwitchAttack`, `DataPoisoningAttack`, `DistributionShiftAttack`)
 - `<explainer>`: explanation method (e.g. `Lime`, `Shap`)
 - `<metric>`: explanation drift metric (e.g. `Cosine`, `Spearman`, `Wasserstein`)
-- `--seed`: random seed for reproducibility (controls model init, explainer sampling, and attack randomness)
+- `--seed`: random seed for reproducibility (controls model init, explainer sampling, and attack randomness). Defaults to 42
+- `--num_samples`: Num samples from the test set that are used for the evaluation. Defaults to 1000
 
 After running the command, the benchmark prints progress and saves all results as a JSON file.
 
