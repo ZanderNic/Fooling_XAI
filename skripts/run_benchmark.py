@@ -40,7 +40,6 @@ from xai_bench.datasets.covtype_forest import ForestDataset
 # metrics
 from xai_bench.metrics.cosine_metric import CosineMetric
 from xai_bench.metrics.spearmen_metric import SpearmanMetric
-from xai_bench.metrics.wasserstein_metric import WassersteinMetric
 from xai_bench.metrics.l2_metric import L2Metric
 
 # utils imports
@@ -67,18 +66,17 @@ METRICS = {
     "L2": L2Metric,
     "Cosine": CosineMetric,
     "Spearman": SpearmanMetric,
-    "Wasserstein": WassersteinMetric,
 }
 
 MODELS = ["CNN1D", "MLP", "RF"]
-ATTACKS = ["RandomWalkAttack", "ColumnSwitchAttack", "DataPoisoningAttack", "GreedyHillClimb"]
+ATTACKS = ["RandomWalkAttack", "RandomWalkWithMemoryAttack", "MonteCarloAttack", "TrainLookupAttack", "ColumnSwitchAttack", "DataPoisoningAttack", "GreedyHillClimb"]
 EXPLAINER = ["Shap", "Lime"]
 
 
 def run(
     dataset: BaseDataset,
     model_name: Literal["CNN1D", "MLP", "RF"],
-    attack_name: Literal["RandomWalkAttack", "ColumnSwitchAttack", "DataPoisoningAttack"],
+    attack_name: Literal["RandomWalkAttack", "RandomWalkWithMemoryAttack", "MonteCarloAttack", "TrainLookupAttack", "ColumnSwitchAttack", "DataPoisoningAttack"],
     explainer_name: Literal["Shap", "Lime"],
     metric: BaseMetric,
     seed: int,

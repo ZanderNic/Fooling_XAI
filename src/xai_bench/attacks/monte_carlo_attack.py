@@ -11,12 +11,11 @@ from xai_bench.base import BaseAttack, BaseDataset, BaseModel, BaseExplainer
 from xai_bench.metrics.base_metric import BaseMetric
 
 
-class RandomWalkAttack(BaseAttack):
+class MonteCarloAttack(BaseAttack):
     """
-        The RandomWalkAttack is a naive local attack that performs random sequential changes 
-        of the features to generate a perturbed input `x_adv`. A step is only taken if 
-        the distance of model predictions is bounded by epsilon. This is checked via the 
-        is_attack_valid method of the base attack class.
+        The MonteCarloAttack creates candidates around the original data point. 
+        All valid corrupted points are tested for their explanation distance to the
+        input instance and the one with the best score is the result.
 
         Supports mixed feature spaces:
         - Numerical features: small random steps within observed feature ranges.
@@ -44,11 +43,11 @@ class RandomWalkAttack(BaseAttack):
             epsilon : float, default=0.05
                 Maximum allowed perturbation size (constraint handled by `is_attack_okay`).
 
-            num_steps : int, default=100
+            num_candidates : int, default=100
                 Number of steps.
 
-            step_len : float, default=0.01
-                Step length used for numerical feature updates (scaled by feature range).
+            max_distance : float, default=0.1
+                Maximum distance used for numerical feature updates (scaled by feature range).
 
             seed : int | None, default=None
                 Random seed for reproducibility. If None, a random seed is used.
@@ -64,19 +63,19 @@ class RandomWalkAttack(BaseAttack):
         explainer: BaseExplainer,
         metric : BaseMetric,
         epsilon: float = 0.05,
-        num_steps: int = 100,
-        step_len: float = 0.01,
+        num_candidates: int = 100,
+        max_distance: float = 0.1,
         num_samples_explainer: float = 100,
         seed: int = None,
         task: Literal["classification", "regression"] = "classification",
     ):
-        super().__init__(model=model, task=task, epsilon=epsilon, stats=[self, "RandomWalkAttack"])
+        super().__init__(model=model, task=task, epsilon=epsilon, stats=[self, "MonteCarloAttack"])
         self.dataset = dataset
         self.explainer = explainer
         self.metric = metric
         
-        self.num_steps = num_steps
-        self.step_len = step_len
+        self.num_candidates = num_candidates
+        self.max_distance = max_distance
         self.num_samples_explainer = num_samples_explainer
         
         self.protected_features = self.dataset.categorical_features
@@ -93,11 +92,11 @@ class RandomWalkAttack(BaseAttack):
         self.rng = np.random.default_rng(self.seed)                         
 
 
-    def _step(self, x: np.ndarray) -> np.ndarray:
+    def _create_candidate(self, x: np.ndarray) -> np.ndarray:
         """
-        Perform a single random walk step by perturbing exactly one feature.
+        Creates a candidate in proximity to the original point.
 
-        Numerical features are perturbed by a small random step within their
+        Numerical features are perturbed by a random step within their
         observed range. Categorical features are changed by randomly selecting
         a different category observed during training.
 
@@ -111,45 +110,39 @@ class RandomWalkAttack(BaseAttack):
         np.ndarray
             Perturbed sample of shape (d,).
         """
-        x_adv = x.copy()
+        x_candidate = x.copy()
 
-        feat = self.rng.choice(self.cols)
-        idx = self.col2idx[feat]
+        for feat in self.cols:
+            idx = self.col2idx[feat]
 
-        if feat in self.num_features:
-            f_min, f_max = self.ranges[feat]
-            span = f_max - f_min
+            if feat in self.num_features:
+                f_min, f_max = self.ranges[feat]
+                span = f_max - f_min
 
-            step = self.rng.uniform(
-                -self.step_len * span,
-                self.step_len * span
-            )
+                step = self.rng.uniform(
+                    -self.max_distance * span,
+                    self.max_distance * span
+                )
 
-            new_val = np.clip(x_adv[idx] + step, f_min, f_max)
-            x_candidate = x_adv.copy()
-            x_candidate[idx] = new_val
+                x_candidate[idx] = np.clip(
+                    x_candidate[idx] + step, f_min, f_max
+                )
 
-        elif feat in self.cat_features:
-            values = self.cat_vals.get(feat, None)
-            if values is None or len(values) <= 1:
-                return x_adv
+            elif feat in self.cat_features:
+                values = self.cat_vals.get(feat)
+                if values is None or len(values) <= 1:
+                    continue
 
-            current_val = x_adv[idx]
-            possible_vals = [v for v in values if v != current_val]
+                current_val = x_candidate[idx]
+                possible_vals = [v for v in values if v != current_val]
 
-            if not possible_vals:
-                return x_adv
-
-            x_candidate = x_adv.copy()
-            x_candidate[idx] = self.rng.choice(possible_vals)
-
-        else:
-            return x_adv
+                if possible_vals:
+                    x_candidate[idx] = self.rng.choice(possible_vals)
 
         if self.is_attack_valid(x.reshape(1, -1), x_candidate.reshape(1, -1))[0]:
             return x_candidate
 
-        return x_adv
+        return x
 
 
     def fit(self) -> None:
@@ -161,7 +154,9 @@ class RandomWalkAttack(BaseAttack):
 
     def _generate(self, x: np.ndarray) -> np.ndarray:
         """
-            Generate an adversarial sample using the random walk.
+            Generate an adversarial sample by creating candidates close to the original 
+            instance and returning the best one according to the distance between the 
+            explanation of the base and corrupted explanation.
 
             The method takes random steps from the origin `x` to create a pertubed sample 
             `x_adv` that fulfills the epsilon contraint.
@@ -173,8 +168,24 @@ class RandomWalkAttack(BaseAttack):
             Returns
                 np.ndarray
                     Adversarial sample found (shape (d,)).
-        """        
-        for _ in range(self.num_steps):
-            x = self._step(x) 
-                  
-        return x
+        """  
+        x_exp = self.explainer.explain(x.reshape(1, -1), self.num_samples_explainer)
+
+        best_candidate = x
+        best_score = -np.inf
+
+        for _ in range(self.num_candidates):
+            x_candidate = self._create_candidate(x)
+
+            if np.allclose(x_candidate, x):
+                continue
+
+            cand_exp = self.explainer.explain(x_candidate.reshape(1, -1), self.num_samples_explainer)
+
+            score = self.metric._compute(x_exp, cand_exp)
+
+            if score > best_score:
+                best_score = score
+                best_candidate = x_candidate
+
+        return best_candidate

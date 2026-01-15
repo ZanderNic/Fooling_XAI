@@ -27,7 +27,7 @@ Given a configuration `(dataset, model, explainer, attack, metric)` the benchmar
 - fits a model-agnostic explainer (LIME / SHAP Kernel)
 - generates adversarial samples `X_adv` from `X`
 - enforces prediction fidelity constraints (`<= epsilon`)
-- measures explanation drift (Cosine / Spearman / Wasserstein)
+- measures explanation drift (L2/ Cosine / Spearman)
 - exports results as JSON (scores, timings, counters)
 
 **Important:** All attacks in this repository are **black-box**:
@@ -53,9 +53,9 @@ they only require access to model outputs (`predict`, `predict_proba`) and do **
 
 ## 📏 Metrics (explanation drift)
 
+- **L2**
 - **Cosine**
 - **Spearman**
-- **Wasserstein**
 
 ---
 
@@ -104,7 +104,7 @@ python skripts/run_benchmark.py <dataset> <model> <attack> <explainer> <metric> 
 - `<model>`: model type (e.g. `RF`, `MLP`, `CNN1D`)
 - `<attack>`: attack method (e.g. `GreedyHillClimb`, `ColumnSwitchAttack`, `DataPoisoningAttack`, `DistributionShiftAttack`)
 - `<explainer>`: explanation method (e.g. `Lime`, `Shap`)
-- `<metric>`: explanation drift metric (e.g. `Cosine`, `Spearman`, `Wasserstein`)
+- `<metric>`: explanation drift metric (e.g. `L2`, `Cosine`, `Spearman`)
 - `--seed`: random seed for reproducibility (controls model init, explainer sampling, and attack randomness). Defaults to 42
 - `--num_samples`: Num samples from the test set that are used for the evaluation. Defaults to 1000
 

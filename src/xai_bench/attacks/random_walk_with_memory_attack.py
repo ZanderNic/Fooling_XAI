@@ -11,12 +11,11 @@ from xai_bench.base import BaseAttack, BaseDataset, BaseModel, BaseExplainer
 from xai_bench.metrics.base_metric import BaseMetric
 
 
-class RandomWalkAttack(BaseAttack):
+class RandomWalkWithMemoryAttack(BaseAttack):
     """
-        The RandomWalkAttack is a naive local attack that performs random sequential changes 
-        of the features to generate a perturbed input `x_adv`. A step is only taken if 
-        the distance of model predictions is bounded by epsilon. This is checked via the 
-        is_attack_valid method of the base attack class.
+        The RandomWalkWithMemoryAttack additionally uses the explainer and metric to compute the 
+        explanation distance for each step. The best scoring instance is used as attack. 
+        Multiple runs are executed to find a good pertubation. 
 
         Supports mixed feature spaces:
         - Numerical features: small random steps within observed feature ranges.
@@ -44,6 +43,9 @@ class RandomWalkAttack(BaseAttack):
             epsilon : float, default=0.05
                 Maximum allowed perturbation size (constraint handled by `is_attack_okay`).
 
+            num_runs : int, default=10
+                Number of runs.
+
             num_steps : int, default=100
                 Number of steps.
 
@@ -59,14 +61,15 @@ class RandomWalkAttack(BaseAttack):
     
     def __init__(
         self,
-        dataset: BaseDataset,
-        model: BaseModel,
-        explainer: BaseExplainer,
-        metric : BaseMetric,
+        dataset,
+        model,
+        explainer,
+        metric,
         epsilon: float = 0.05,
+        num_runs: int = 10,
         num_steps: int = 100,
         step_len: float = 0.01,
-        num_samples_explainer: float = 100,
+        num_samples_explainer: int = 100,
         seed: int = None,
         task: Literal["classification", "regression"] = "classification",
     ):
@@ -75,6 +78,7 @@ class RandomWalkAttack(BaseAttack):
         self.explainer = explainer
         self.metric = metric
         
+        self.num_runs = num_runs
         self.num_steps = num_steps
         self.step_len = step_len
         self.num_samples_explainer = num_samples_explainer
@@ -90,7 +94,7 @@ class RandomWalkAttack(BaseAttack):
         self.cat_vals = getattr(self.dataset, "scaled_categorical_values", None) or getattr(self.dataset, "categorical_values", {})
 
         self.seed = seed
-        self.rng = np.random.default_rng(self.seed)                         
+        self.rng = np.random.default_rng(self.seed)                    
 
 
     def _step(self, x: np.ndarray) -> np.ndarray:
@@ -161,10 +165,13 @@ class RandomWalkAttack(BaseAttack):
 
     def _generate(self, x: np.ndarray) -> np.ndarray:
         """
-            Generate an adversarial sample using the random walk.
+            Generate an adversarial sample using multiple random walk and memory to save the 
+            global best occuring instance that has the highest explanation difference.
 
             The method takes random steps from the origin `x` to create a pertubed sample 
-            `x_adv` that fulfills the epsilon contraint.
+            `x_adv` that fulfills the epsilon contraint. All explanation distances of the steps 
+            are compared to the global best attack. This is done for multiple runs and the 
+            final best instance is returned.
 
             Parameters 
                 x : np.ndarray
@@ -173,8 +180,22 @@ class RandomWalkAttack(BaseAttack):
             Returns
                 np.ndarray
                     Adversarial sample found (shape (d,)).
-        """        
-        for _ in range(self.num_steps):
-            x = self._step(x) 
-                  
-        return x
+        """       
+        x_exp = self.explainer.explain(x.reshape(1, -1), self.num_samples_explainer)
+
+        best_global_x = x.copy()
+        best_global_score = -np.inf
+
+        for _ in range(self.num_runs):
+            current_x = x.copy()
+
+            for _ in range(self.num_steps):
+                current_x = self._step(current_x)
+                current_exp = self.explainer.explain(current_x.reshape(1, -1), self.num_samples_explainer)
+                score = self.metric.compute(x_exp, current_exp)[0]
+
+                if score > best_global_score:
+                    best_global_score = score
+                    best_global_x = current_x.copy()
+
+        return best_global_x
