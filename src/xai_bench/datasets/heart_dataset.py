@@ -21,17 +21,6 @@ class HeartDataset(BaseDataset):
 
 
     def read(self) -> pd.DataFrame:
-        if self.path.suffix != ".csv":
-            raise ValueError("Path must point to a .csv file")
-
-        if not self.path.exists():
-            dataset_dir = kagglehub.dataset_download(
-                "cherngs/heart-disease-cleveland-uci"
-            )
-            print(f"Downloaded dataset to {dataset_dir}")
-
-            self.path = Path(dataset_dir) / "heart_cleveland_upload.csv"
-
         self.df_raw = pd.read_csv(self.path)
         return self.df_raw
 
