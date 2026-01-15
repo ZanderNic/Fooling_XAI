@@ -119,6 +119,56 @@ def load_attack(
         
         attack.fit()
         return attack
+    
+    if attack_string == "RandomWalkWithMemoryAttack":
+        from xai_bench.attacks.random_walk_with_memory_attack import RandomWalkWithMemoryAttack
+        attack = RandomWalkWithMemoryAttack(
+            dataset=dataset,
+            model=model,
+            explainer=explainer,
+            metric=metric,
+            epsilon=epsilon,
+            seed=seed,
+            task=dataset.task,
+            num_runs=10,
+            num_steps=100
+        )
+        
+        attack.fit()
+        return attack
+    
+    if attack_string == "MonteCarloAttack":
+        from xai_bench.attacks.monte_carlo_attack import MonteCarloAttack
+        attack = MonteCarloAttack(
+            dataset=dataset,
+            model=model,
+            explainer=explainer,
+            metric=metric,
+            epsilon=epsilon,
+            seed=seed,
+            task=dataset.task,
+            num_candidates=100,
+            max_distance=0.1
+        )
+        
+        attack.fit()
+        return attack
+    
+    if attack_string == "TrainLookupAttack":
+        from xai_bench.attacks.train_lookup_attack import TrainLookupAttack
+        attack = TrainLookupAttack(
+            dataset=dataset,
+            model=model,
+            explainer=explainer,
+            metric=metric,
+            epsilon=epsilon,
+            seed=seed,
+            task=dataset.task,
+            max_candidates=10
+        )
+        
+        attack.fit()
+        return attack
 
     if attack_string == "ColumnSwitchAttack":
         from xai_bench.attacks.switch_column_attack import ColumnSwitchAttack

@@ -9,10 +9,10 @@ from jaxtyping import Shaped
 from xai_bench.stat_collector import StatCollector
 
 class BaseAttack(ABC):
-    def __init__(self, model: BaseModel, task: Literal["classification","regression"], epislon:Optional[float], stats):
+    def __init__(self, model: BaseModel, task: Literal["classification","regression"], epsilon:Optional[float], stats):
         self.model = model
         self.task: Literal["classification","regression"] = task
-        self.epsilon: Optional[float] = epislon
+        self.epsilon: Optional[float] = epsilon
         self.stats = StatCollector(obj=stats[0],comment=stats[1])
     """
     Call beforehand in order to setup the attack. (e.g. finding best parameters)
@@ -79,6 +79,6 @@ class BaseAttack(ABC):
     """
     Will use attack when valid, otherwise original
     """
-    def wrap_attack_valid(self, X, X_adv, epislon:Optional[float]=None):
-        _, sums = self.is_attack_valid(X,X_adv,epislon)
+    def wrap_attack_valid(self, X, X_adv, epsilon:Optional[float]=None):
+        _, sums = self.is_attack_valid(X,X_adv,epsilon)
         return np.where(sums,X_adv,X)

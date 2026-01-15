@@ -71,14 +71,14 @@ METRICS = {
 }
 
 MODELS = ["CNN1D", "MLP", "RF"]
-ATTACKS = ["RandomWalkAttack", "ColumnSwitchAttack", "DataPoisoningAttack", "GreedyHillClimb"]
+ATTACKS = ["RandomWalkAttack", "RandomWalkWithMemoryAttack", "MonteCarloAttack", "TrainLookupAttack", "ColumnSwitchAttack", "DataPoisoningAttack", "GreedyHillClimb"]
 EXPLAINER = ["Shap", "Lime"]
 
 
 def run(
     dataset: BaseDataset,
     model_name: Literal["CNN1D", "MLP", "RF"],
-    attack_name: Literal["RandomWalkAttack", "ColumnSwitchAttack", "DataPoisoningAttack"],
+    attack_name: Literal["RandomWalkAttack", "RandomWalkWithMemoryAttack", "MonteCarloAttack", "TrainLookupAttack", "ColumnSwitchAttack", "DataPoisoningAttack"],
     explainer_name: Literal["Shap", "Lime"],
     metric: BaseMetric,
     seed: int,
