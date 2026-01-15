@@ -10,12 +10,11 @@ from sklearn.preprocessing import StandardScaler
 class HousingDataset(BaseDataset):
     def __init__(self, path: Union[str, Path] = None, **kwargs):   
         self.categorical_features = [ "waterfront", 'view']
-        self.numerical_features = [
-            'bedrooms', 'bathrooms', 'sqft_living','sqft_lot', 'floors', 'condition', 'grade', 'sqft_above', 'sqft_basement', 'yr_built', 'yr_renovated', 'zipcode', 'lat', 'long', 'sqft_living15', 'sqft_lot15']
+        self.numerical_features = ['bedrooms', 'bathrooms', 'sqft_living','sqft_lot', 'floors', 'condition', 'grade', 'sqft_above', 'sqft_basement', 'yr_built', 'yr_renovated', 'zipcode', 'lat', 'long', 'sqft_living15', 'sqft_lot15']
         self.target = "price"
         self.task = "regression"
         
-        path = str(path) if path is not None else f"{Path(__file__).parent}/housing.csv" # "src/xai_bench/datasets/heart.csv"
+        path = str(path) if path is not None else f"{Path(__file__).parent}/housing.csv" 
     
         super().__init__(path, task=self.task, **kwargs)
 
@@ -72,11 +71,7 @@ class HousingDataset(BaseDataset):
 
 
 if __name__ == "__main__":
-    import os
-
     path = "src/xai_bench/datasets/housing.csv"
-
-    df = pd.read_csv(path)
 
     dataset = HousingDataset(path)
 

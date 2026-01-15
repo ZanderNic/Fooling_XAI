@@ -33,10 +33,11 @@ class ForestDataset(BaseDataset):
                                 "Horizontal_Distance_To_Fire_Points"
                                 ]
 
-
-
         self.target = "Cover_Type"
         self.task = "classification"
+
+        path = str(path) if path is not None else f"{Path(__file__).parent}/covtype_forest.csv"
+
         super().__init__(path, **kwargs)
 
     def read(self) -> pd.DataFrame:
@@ -64,20 +65,15 @@ class ForestDataset(BaseDataset):
 if __name__ == "__main__":
     path = "src/xai_bench/datasets/covtype_forest.csv"
 
-    df = pd.read_csv(path)
-    print(df)
     
+    dataset = ForestDataset(path)
 
+    print("Raw data shape:", dataset.df_raw.values.shape)
+    print("X_train shape:", dataset.X_train.shape)
+    print("X_test shape:", dataset.X_test.shape)
 
-
-    # dataset = ForestDataset(path)
-
-    # print("Raw data shape:", dataset.df_raw.values.shape)
-    # print("X_train shape:", dataset.X_train.shape)
-    # print("X_test shape:", dataset.X_test.shape)
-
-    # print("Orignial columns:", dataset.df_raw.columns)
-    # print("Column mapping:", dataset.feature_mapping)
+    print("Orignial columns:", dataset.df_raw.columns)
+    print("Column mapping:", dataset.feature_mapping)
 
     
 
