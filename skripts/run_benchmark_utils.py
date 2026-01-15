@@ -164,7 +164,7 @@ def load_attack(
             epsilon=epsilon,
             seed=seed,
             task=dataset.task,
-            max_candidates=100
+            max_candidates=10
         )
         
         attack.fit()
@@ -271,5 +271,9 @@ def calculate_metrics(X_exp:np.ndarray, X_adv_exp:np.ndarray, METRICS:dict)->dic
     ):
         m: BaseMetric = MetricCls()
         s = m.compute(X_exp, X_adv_exp)
+        import matplotlib.pyplot as plt
+        plt.hist(s, bins=10)
+        plt.title(m.name)
+        plt.show()
         explain_scores[name] = {"mean": float(s.mean()), "std": float(s.std())}
     return explain_scores

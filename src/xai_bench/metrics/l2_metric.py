@@ -13,9 +13,9 @@ class L2Metric(BaseMetric):
 
     Parameters
     ----------
-    normalization_mode : str, default="none"
-        Normalization applied to each explanation vector before computing L2.
-        Options: "l2", "l1", "none".
+    normalization_mode : str, default="l2"
+        Normalization method to apply to the explanations before computing distance.
+        Options: "l2" (default), "l1", "none".
 
     Methods
     -------
@@ -23,7 +23,7 @@ class L2Metric(BaseMetric):
         Returns an array of L2 distances for each explanation vector pair.
     """
     def __init__(self):
-        super().__init__("l2_normed")
+        super().__init__("l2")
         self.normalizer = ExplanationNormalizer(mode="l2")
 
     def _compute(self, e1: np.ndarray, e2: np.ndarray) -> float:

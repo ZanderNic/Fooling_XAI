@@ -40,7 +40,6 @@ from xai_bench.datasets.covtype_forest import ForestDataset
 # metrics
 from xai_bench.metrics.cosine_metric import CosineMetric
 from xai_bench.metrics.spearmen_metric import SpearmanMetric
-from xai_bench.metrics.wasserstein_metric import WassersteinMetric
 from xai_bench.metrics.l2_metric import L2Metric
 
 # utils imports
@@ -67,7 +66,6 @@ METRICS = {
     "L2": L2Metric,
     "Cosine": CosineMetric,
     "Spearman": SpearmanMetric,
-    "Wasserstein": WassersteinMetric,
 }
 
 MODELS = ["CNN1D", "MLP", "RF"]
