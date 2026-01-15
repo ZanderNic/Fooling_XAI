@@ -14,10 +14,16 @@ from xai_bench.models.base_model import BaseModel
 
 
 class ShapAdapter(BaseExplainer):
-    def __init__(self, dataset: BaseDataset, nsamples: int = 2000, background_size: int = 200, random_state: int = 42):
+    def __init__(
+        self,
+        dataset: BaseDataset,
+        num_samples: int = 2000,
+        background_size: int = 200,
+        random_state: int = 42
+    ):
         super().__init__(stats=(self,"ShapExplainer counter"))
         self.dataset = dataset
-        self.nsamples = int(nsamples)
+        self.num_samples = int(num_samples)
         self.background_size = int(background_size)
         self.random_state = int(random_state)
 
@@ -61,7 +67,8 @@ class ShapAdapter(BaseExplainer):
 
     def explain(
         self, 
-        X: np.ndarray
+        X: np.ndarray,
+        num_samples: int = None
     ) -> np.ndarray:
         """
         Compute a SHAP explanation and aggregate it according to the dataset's feature mapping.
@@ -83,7 +90,7 @@ class ShapAdapter(BaseExplainer):
         # produce explanations
         shap_values = self._explainer.shap_values(
             X,
-            nsamples=self.nsamples,
+            nsamples=self.num_samples,
             random_state=self.random_state,
             silent=True
         )

@@ -138,12 +138,13 @@ def load_attack(
         attack =  DataPoisoningAttack(
             dataset=dataset,
             model=model,
+            explainer=explainer,
             task= dataset.task,
+            epsilon=epsilon,
             random_state=seed
         )
-        
+
         attack.fit(
-            explainer=explainer,
             N_GEN=1,  # for testing
             N_POP=10,
             N_SAMPLE=3,
@@ -153,9 +154,28 @@ def load_attack(
             P_COMBINE=0.1,
             DRIFT_THRESHOLD=0.1,
             DRIFT_CONFIDENCE=0.95,
-            EARLY_STOPPING_PATIENCE=7
+            EARLY_STOPPING_PATIENCE=7,
+            EXPLAINER_NUM_SAMPLES=100
         )
 
+        return attack
+    
+    if attack_string == "GreedyHillClimb":
+        from xai_bench.attacks.greedy_hill_climb import GreedyHillClimb
+        attack = GreedyHillClimb(
+            dataset=dataset,
+            model=model,
+            explainer=explainer,
+            metric=metric,
+            epsilon=epsilon,
+            seed=seed,
+            task=dataset.task,
+            num_climbs=100,
+            num_derections=100,
+            max_trys=1,
+            step_len=0.001,
+            proba_numeric=0.7,
+        )
         return attack
 
     raise ValueError(f"Unknown attack type: {attack_string}")

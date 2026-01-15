@@ -69,7 +69,7 @@ METRICS = {
 }
 
 MODELS = ["CNN1D", "MLP", "RF"]
-ATTACKS = ["DistributionShiftAttack", "ColumnSwitchAttack", "DataPoisoningAttack"]
+ATTACKS = ["DistributionShiftAttack", "ColumnSwitchAttack", "DataPoisoningAttack", "GreedyHillClimb"]
 EXPLAINER = ["Shap", "Lime"]
 
 
@@ -227,10 +227,16 @@ if __name__ == "__main__":
         default=42,
         help="Random seed for reproducibility. Controls all stochastic components (model init, explainer sampling, attacks).",
     )
+    parser.add_argument(
+        "--num_samples",
+        type=int,
+        default=1000,
+        help="Num samples from the test set that are used for the evaluation",
+    )
 
     args = parser.parse_args()
 
-    console.print(f"[#69db88][RUN][/#69db88]{TC}Starting new run with: [/]", args)
+    console.print(f"[#69db88][RUN][/#69db88]{TC} Starting new run with: [/]", args)
     result = run(
         dataset=DATASETS[args.dataset](),
         model_name=args.model,
@@ -238,6 +244,7 @@ if __name__ == "__main__":
         explainer_name=args.explainer,
         metric=METRICS[args.metric](),
         seed=args.seed,
+        num_samples=args.num_samples
     )
 
     results_dir = Path("results")

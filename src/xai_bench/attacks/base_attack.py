@@ -72,7 +72,7 @@ class BaseAttack(ABC):
         if epsilon is None:
             assert self.epsilon is not None, "At least one epsilon must be present"
             epsilon = self.epsilon
-        okays:np.ndarray = p_dist<=epsilon
+        okays:np.ndarray = p_dist <= epsilon
         # return ob okay; num_feature/num_samples okay
         return okays.all(axis=-1), okays.sum(axis=-1)
     

@@ -101,6 +101,7 @@ class LimeTabularAdapter(BaseExplainer):
     def explain(
         self, 
         X: np.ndarray,
+        num_samples: int = None
     ) -> np.ndarray:
         """
             Compute a local LIME explanation for a single input sample.
@@ -148,14 +149,14 @@ class LimeTabularAdapter(BaseExplainer):
                 predict_fn=self.model.predict_proba,
                 labels=self.dataset.classes,
                 num_features=x.shape[0],
-                num_samples=self.num_samples
+                num_samples= self.num_samples if num_samples is None else num_samples
             ) for x in X]
         else:  # regression
             exp = [self._lime.explain_instance(
                 data_row=x,
                 predict_fn=self.model.predict_scalar,
                 num_features=x.shape[0],
-                num_samples=self.num_samples
+                num_samples= self.num_samples if num_samples is None else num_samples
             ) for x in X]
 
         exp_values = []

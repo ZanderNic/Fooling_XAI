@@ -4,6 +4,10 @@ from scipy.stats import kendalltau, norm
 import copy
 import time
 
+import json
+from datetime import datetime, timezone
+
+
 from typing import Literal
 
 from xai_bench.base import BaseModel, BaseAttack, BaseExplainer, BaseDataset
@@ -277,22 +281,26 @@ class Individual:
         assert all(isinstance(cat, np.ndarray) or cat is None for cat in X_cat)
         assert isinstance(rng, np.random.Generator)
 
+        # generate white noise mutation with feature std
+        white_noise = rng.normal(
+            0,
+            self.mutation_stds,
+            size=self.data.shape
+        )
+
+        # decide which instances to mutate
+        mutation_mask = rng.random(self.data.shape[0]) < self.mutation_rate            
+
         # create gaussian mutations with respective stds
         for feature in range(self.data.shape[1]):
-            # decide which instances to mutate
-            mutation_mask = rng.random(self.data.shape[0]) < self.mutation_rate
-
-            # generate mutations with feature std
-            mutations = rng.normal(
-                0,
-                self.mutation_stds[feature],
-                size=self.data.shape[0]
-            )
-
             # categorical feature mutation
             if X_cat[feature] is not None:
                 # map each continuous mutation value to the nearest category value
-                indices = np.abs(mutations[:, None] - X_cat[feature][None, :]).argmin(axis=1)
+                indices = np.abs(
+                    self.data[:, feature, None] + \
+                    white_noise[:, feature, None] - \
+                    X_cat[feature][None, :]
+                ).argmin(axis=-1)
                 mutations = X_cat[feature][indices]
 
                 # apply mutations according to the mask
@@ -300,7 +308,7 @@ class Individual:
             # continuous feature mutation
             else:
                 # apply mutations according to the mask
-                self.data[mutation_mask, feature] += mutations[mutation_mask]
+                self.data[mutation_mask, feature] += white_noise[mutation_mask, feature]
 
         # clip the mutated data to the feature bounds
         self.data = np.clip(
@@ -452,7 +460,8 @@ def population_fitness(
     model: BaseModel,
     reference_predictions: np.ndarray,
     drift_threshold: float = 0.5,
-    drift_confidence: float = 0.95
+    drift_confidence: float = 0.95,
+    prediction_threshold: float = None
 ) -> tuple[np.ndarray, float]:
     """
     Computes the optimization metrics for a population of individuals. The metrics are based on 
@@ -482,6 +491,9 @@ def population_fitness(
             A float value representing the desired confidence level (between 0 and 1) for the
             drift constraint, such that LCB_Wilson(estimated_probability) >= drift_confidence.
 
+        prediction_threshold (float):
+            A float value representing the threshold for model predictions to be considered valid.
+
     Returns:
         tuple[np.ndarray, float]:
             - A 2D numpy array of shape (n_population, 2) with the optimization metrics for each
@@ -497,7 +509,7 @@ def population_fitness(
     assert reference_explanations.ndim == 2
     assert isinstance(model, BaseModel)
     assert isinstance(reference_predictions, np.ndarray)
-    assert reference_predictions.ndim == 1
+    assert reference_predictions.ndim == 2
     assert isinstance(drift_threshold, float)
     assert 0 <= drift_threshold
     assert isinstance(drift_confidence, float)
@@ -506,7 +518,7 @@ def population_fitness(
     # determine dimensionalities
     n_pop = len(population)
     n_sample_size = len(population[0])
-    n_features = population[0][0].data.shape[1]
+    n_datapoints = reference_explanations.shape[0]
 
     print("Start population fitness calculation:")
     start_time = time.time()  # LOGGING
@@ -550,12 +562,13 @@ def population_fitness(
     # determine the prediction mask to filter valid explanations
     reference_predictions_rep = np.tile(
         reference_predictions,
-        (n_pop, n_sample_size)
+        (n_pop, n_sample_size, 1, 1)
     )
 
-    predictions = model.predict(pop).reshape(n_pop, -1)
+    predictions = model.predict_raw(pop).reshape(n_pop, n_sample_size, n_datapoints, -1)
+    prediction_mask = np.abs(reference_predictions_rep - predictions) <= prediction_threshold
+    prediction_mask = prediction_mask.all(axis=-1).reshape(n_pop, -1)
 
-    prediction_mask = reference_predictions_rep == predictions
     valid_scores_amount = prediction_mask.sum(axis=-1)
 
     print(f"\tCalculating prediction mask took {time.time() - section_time} seconds.")
@@ -1146,7 +1159,8 @@ def evolve_population(
     X_max: np.ndarray = None,
     X_cat: list = None,
     early_stopping_patience: int = 10,
-    rng: np.random.Generator = None
+    rng: np.random.Generator = None,
+    prediction_threshold: float = None
 ) -> tuple[np.ndarray, np.ndarray, EarlyStopping, list[tuple[np.ndarray, list[list[Individual]], float]], float]:
     """
     Evolves the given initial population over a specified number of generations
@@ -1208,6 +1222,9 @@ def evolve_population(
 
         rng (np.random.Generator):
             A numpy random Generator instance for reproducibility.
+        
+        prediction_threshold (float):
+            A float value representing the threshold for model predictions to be considered valid.
 
     Returns:
         tuple:
@@ -1252,6 +1269,7 @@ def evolve_population(
     assert isinstance(early_stopping_patience, int)
     assert early_stopping_patience > 0
     assert isinstance(rng, np.random.Generator)
+    assert prediction_threshold is not None and isinstance(prediction_threshold, float)
 
     try:
         time_start = time.time()
@@ -1269,7 +1287,7 @@ def evolve_population(
         current_population = copy.deepcopy(initial_population)
         individual_sample_size = len(initial_population[0])
 
-        reference_predictions = model.predict(X_data)
+        reference_predictions = model.predict_raw(X_data)
 
         # calculate the fitness for all individuals in the current population
         fitness_metrics, mean_probability = population_fitness(
@@ -1279,7 +1297,8 @@ def evolve_population(
             model,
             reference_predictions,
             drift_threshold,
-            drift_confidence
+            drift_confidence,
+            prediction_threshold
         )
 
         # rank the individuals' fitness metrics
@@ -1334,7 +1353,8 @@ def evolve_population(
                 model,
                 reference_predictions,
                 drift_threshold,
-                drift_confidence
+                drift_confidence,
+                prediction_threshold
             )
 
             # rank the individuals' fitness metrics
@@ -1385,8 +1405,10 @@ class DataPoisoningAttack(BaseAttack):
         self,
         dataset: BaseDataset,
         model: BaseModel,
+        explainer: BaseExplainer,
         task: Literal["classification","regression"]="classification",
         random_state: int = None,
+        epsilon: float = None
     ):
         """
         Initializes the DataPoisoningAttack object with the specified arguments.
@@ -1398,20 +1420,26 @@ class DataPoisoningAttack(BaseAttack):
             model (BaseModel):
                 The model to be attacked.
 
+            explainer (BaseExplainer):
+                An explainer object that can compute explanations for data instances.
+
             task (Literal["classification","regression"]):
                 The type of task the model is performing, either "classification" or "regression".
 
             random_state (int):
                 An integer representing the random seed for reproducibility.
+
+            epsilon (float):
+                A float value representing the maximum allowed perturbation for each feature.
         """
-        super().__init__(model, task)
+        super().__init__(model, task, epsilon, stats=[self,"DataPoisoningAttack"])
         self.dataset = dataset
+        self.explainer = explainer
 
         self.rng = np.random.default_rng(seed=random_state)
 
     def fit(
         self,
-        explainer: BaseExplainer,
         N_GEN: int = 100,
         N_POP: int = 20,
         N_SAMPLE: int = 15,
@@ -1422,6 +1450,7 @@ class DataPoisoningAttack(BaseAttack):
         DRIFT_THRESHOLD: float = 0.1,
         DRIFT_CONFIDENCE: float = 0.95,
         EARLY_STOPPING_PATIENCE: int = 10,
+        EXPLAINER_NUM_SAMPLES: int = 100,
     ):
         """
         Fits the data poisoning attack by using an evolutionary algorithm to find optimal
@@ -1434,9 +1463,6 @@ class DataPoisoningAttack(BaseAttack):
             samples per individual, the fitting process can take a significant amount of time.
         
         Args:
-            explainer (BaseExplainer):
-                An explainer object that can compute explanations for data instances.
-
             N_GEN (int):
                 An integer representing the number of generations to evolve the population
                 of standard deviations.
@@ -1495,7 +1521,6 @@ class DataPoisoningAttack(BaseAttack):
             random_state (int):
                 An integer representing the random seed for reproducibility.
         """
-        assert isinstance(explainer, BaseExplainer)
         assert isinstance(N_GEN, int) and N_GEN > 0
         assert isinstance(N_POP, int) and N_POP > 0
         assert isinstance(N_SAMPLE, int) and N_SAMPLE > 0
@@ -1506,6 +1531,12 @@ class DataPoisoningAttack(BaseAttack):
         assert isinstance(DRIFT_THRESHOLD, float) and DRIFT_THRESHOLD >= 0
         assert isinstance(DRIFT_CONFIDENCE, float) and 0 <= DRIFT_CONFIDENCE <= 1
         assert isinstance(EARLY_STOPPING_PATIENCE, int) and EARLY_STOPPING_PATIENCE > 0
+        assert isinstance(EXPLAINER_NUM_SAMPLES, int) and EXPLAINER_NUM_SAMPLES > 0
+        self.stats("fit")
+
+        # lower number of samples for explanation during fitting for performance
+        original_explainer_num_samples = self.explainer.num_samples
+        self.explainer.num_samples = EXPLAINER_NUM_SAMPLES
         
         # determine feature bounds and categorical feature information
         self.X_min, self.X_max = np.array(list(self.dataset.feature_ranges.values())).T
@@ -1524,14 +1555,14 @@ class DataPoisoningAttack(BaseAttack):
         )
 
         # compute the reference explanation to compare the drift against
-        reference_explanations = explainer.explain(
+        reference_explanations = self.explainer.explain(
             self.dataset.X_test_scaled.values
         )
 
         # start the evolution process
         gen_stds, gen_fitnesses, early_stopping, logging, total_time = evolve_population(
             initial_population=initial_population,
-            explainer=explainer,
+            explainer=self.explainer,
             reference_explanations=reference_explanations,
             model=self.model,
             drift_threshold=DRIFT_THRESHOLD,
@@ -1544,16 +1575,49 @@ class DataPoisoningAttack(BaseAttack):
             X_max=self.X_max,
             X_cat=self.X_cat,
             early_stopping_patience=EARLY_STOPPING_PATIENCE,
-            rng=self.rng
+            rng=self.rng,
+            prediction_threshold=self.epsilon
         )
 
         # save the best found stds for data poisoning on the dataset
         self.scaled_attack_stds = early_stopping.best_stds
 
+        # save the results of the evolution process to json
+        results = {
+            "generation_stds": gen_stds.tolist(),
+            "generation_fitnesses": gen_fitnesses.tolist(),
+            "best_stds": early_stopping.best_stds.tolist(),
+            "best_fitness": early_stopping.best_fitness,
+            "best_mean_probability": early_stopping.mean_probability,
+            "total_time_seconds": total_time,
+            "meta": {
+                "N_GEN": N_GEN,
+                "N_POP": N_POP,
+                "N_SAMPLE": N_SAMPLE,
+                "DATASET_SHAPE": self.dataset.X_test.shape,
+                "INIT_MUTATION_RATE": INIT_MUTATION_RATE,
+                "INIT_STD": INIT_STD,
+                "P_ELITE": P_ELITE,
+                "P_COMBINE": P_COMBINE,
+                "DRIFT_THRESHOLD": DRIFT_THRESHOLD,
+                "DRIFT_CONFIDENCE": DRIFT_CONFIDENCE,
+                "EARLY_STOPPING_PATIENCE": EARLY_STOPPING_PATIENCE,
+                "STOPPED_GENERATION": len(gen_fitnesses),
+                "EXPLAINER_SAMPLES_DURING_FIT": self.explainer.num_samples
+            }
+        }
+
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+        with open(f"./results/DataPoisoningAttack_evolution_results_{timestamp}.json", "w") as f:
+            json.dump(results, f, indent=4)
+
+        # restore original explainer number of samples
+        self.explainer.num_samples = original_explainer_num_samples
+
     def generate(
         self,
         x: np.ndarray,
-        scaled: bool = False
+        scaled: bool = True
     ) -> np.ndarray:
         """
         Generates poisoned data by applying gaussian white noise with the learned standard
@@ -1563,7 +1627,7 @@ class DataPoisoningAttack(BaseAttack):
             x (np.ndarray):
                 A 2D numpy array of shape (n_samples, n_features) representing the data to
                 be poisoned.
-            
+
             scaled (bool):
                 A boolean indicating whether the provided data is already scaled according
                 to the dataset's scaling. If False, the perturbations will be scaled back to
@@ -1578,44 +1642,53 @@ class DataPoisoningAttack(BaseAttack):
         assert isinstance(x, np.ndarray) or isinstance(x, pd.DataFrame)
         assert x.ndim == 2
         assert x.shape[1] == self.scaled_attack_stds.shape[0]
+        self.stats("generate", x)
 
         if isinstance(x, pd.DataFrame):
             x = x.values
 
         x_poisoned = x.copy()
 
-        for feature in range(x.shape[1]):
-            # generate gaussian white noise with the learned stds
-            white_noise = self.rng.normal(
-                loc=0.0,
-                scale=self.scaled_attack_stds[feature],
-                size=x_poisoned.shape[0]
-            )
+        # generate white noise mutation with feature std
+        white_noise = self.rng.normal(
+            0,
+            self.scaled_attack_stds,
+            size=x_poisoned.shape
+        )
 
-            # scale back to original data scale if necessary
-            if not scaled:
-                white_noise *= self.dataset.X_test.values.std(axis=0)[feature]
+        if not scaled:
+            white_noise *= self.dataset.X_test.values.std(axis=0)
 
-            # categorical feature white noise mapping
+        # create gaussian mutations with respective stds
+        for feature in range(x_poisoned.shape[1]):
+            # categorical feature mutation
             if self.X_cat[feature] is not None:
-                # map each continuous white noise value to the nearest category value
-                indices = np.abs(white_noise[:, None] - self.X_cat[feature][None, :]).argmin(axis=1)
+                # map each continuous mutation value to the nearest category value
+                indices = np.abs(
+                    x_poisoned[:, feature, None] + \
+                    white_noise[:, feature, None] - \
+                    self.X_cat[feature][None, :]
+                ).argmin(axis=-1)
                 mutations = self.X_cat[feature][indices]
 
-                # apply mutations
+                # apply mutations according to the mask
                 x_poisoned[:, feature] = mutations
-            # continuous feature white noise application
+            # continuous feature mutation
             else:
-                x_poisoned[:, feature] += white_noise
+                # apply mutations according to the mask
+                x_poisoned[:, feature] += white_noise[:, feature]
 
-        # clip the poisoned data to the feature bounds
+        # clip the mutated data to the feature bounds
         x_poisoned = np.clip(
             x_poisoned,
             self.X_min,
             self.X_max
         )
 
-        return x_poisoned
+        # check validity of the poisoned x on every feature
+        all_okay, _ = self.is_attack_valid(x, x_poisoned, epsilon=self.epsilon)
+
+        return np.where(all_okay[:, None], x_poisoned, x)
 
     def _generate(
         self,
