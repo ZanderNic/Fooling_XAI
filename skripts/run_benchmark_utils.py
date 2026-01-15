@@ -102,18 +102,19 @@ def load_attack(
     """
         Instantiate and return an attack according to the selected attack string.
     """
-    assert dataset.task is not None, "Dataset orpblem .()"
+    assert dataset.task is not None, "Dataset problem .()"
 
     if attack_string == "RandomWalkAttack":
         from xai_bench.attacks.random_walk_attack import RandomWalkAttack
-        attack =  RandomWalkAttack(
+        attack = RandomWalkAttack(
             dataset=dataset,
             model=model,
-            
-            # explainer=explainer,  # TODO !!!!!!!11
-            # metric=metric,
-            # random_state=seed,
-            task=dataset.task
+            explainer=explainer,
+            metric=metric,
+            epsilon=epsilon,
+            seed=seed,
+            task=dataset.task,
+            num_steps=100
         )
         
         attack.fit()
@@ -203,13 +204,17 @@ def save_result_json(path: Path, payload: Dict[str, Any]) -> None:
     with path.open("w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, ensure_ascii=False)
 
-
 def get_attack_success(X:np.ndarray,X_adv:np.ndarray) -> tuple[np.ndarray, int, float]: 
     assert X.shape == X_adv.shape, "Must have same shape"
-    mask = X==X_adv
-    return mask.all(axis=1), int(mask.all(axis=1).sum()), float(mask.all(axis=1).sum()/len(X))
+    unchanged = (X == X_adv).all(axis=1)
+    success = ~unchanged
 
-def calcualte_metrics(X_exp:np.ndarray, X_adv_exp:np.ndarray, METRICS:dict)->dict:
+    num_success = int(success.sum())
+    success_rate = float(num_success / len(X))
+
+    return success, num_success, success_rate
+
+def calculate_metrics(X_exp:np.ndarray, X_adv_exp:np.ndarray, METRICS:dict)->dict:
     explain_scores: Dict[str, dict] = {}
     for name, MetricCls in track(
         METRICS.items(), description="Caluclating Explaination scores", transient=True

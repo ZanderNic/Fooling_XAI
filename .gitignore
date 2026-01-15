@@ -228,3 +228,6 @@ __marimo__/
 
 # macos
 *.DS_Store
+
+# result files
+results/
