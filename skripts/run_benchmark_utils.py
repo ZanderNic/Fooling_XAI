@@ -104,9 +104,9 @@ def load_attack(
     """
     assert dataset.task is not None, "Dataset orpblem .()"
 
-    if attack_string == "DistributionShiftAttack":
-        from xai_bench.attacks.distribution_shift_attack import DistributionShiftAttack
-        attack =  DistributionShiftAttack(
+    if attack_string == "RandomWalkAttack":
+        from xai_bench.attacks.random_walk_attack import RandomWalkAttack
+        attack =  RandomWalkAttack(
             dataset=dataset,
             model=model,
             
