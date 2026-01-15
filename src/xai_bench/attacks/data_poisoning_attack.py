@@ -3,6 +3,7 @@ import pandas as pd
 from scipy.stats import kendalltau, norm
 import copy
 import time
+import os
 
 import json
 from datetime import datetime, timezone
@@ -476,8 +477,8 @@ def population_fitness(
             A population of individuals represented as a list of samples of Individual objects where
             each sample share the same underlying standard deviation for mutating the individuals' data.
 
-        explainer (shap.Explainer):
-            A SHAP explainer object that can compute SHAP values for instances.
+        explainer (BaseExplainer):
+            An explainer object that can compute feature importance values for instances.
 
         reference_explanations (np.ndarray):
             A 2D numpy array of shape (n_datapoints, n_features) containing the reference explanation
@@ -533,8 +534,10 @@ def population_fitness(
     section_time = time.time()  # LOGGING
 
     # produce SHAP explanations for the entire population
-    explanations = explainer.explain(
-        pop
+    explanations = explainer.explain_parallel(
+        pop,
+        n_workers=os.cpu_count(),
+        batch_size=48
     )
 
     print(f"\tProducing explanations took {time.time() - section_time} seconds.")
@@ -1170,8 +1173,8 @@ def evolve_population(
         initial_population (list[Individual]):
             A list of Individual objects representing the initial population.
 
-        explainer (shap.Explainer):
-            A SHAP explainer object that can compute SHAP values for instances built with the
+        explainer (BaseExplainer):
+            An explainer object that can compute feature importance values for instances built with the
             model and initial data to be evaluated.
 
         reference_explanations (np.ndarray):
