@@ -4,6 +4,7 @@ from scipy.stats import kendalltau, norm
 import copy
 import time
 import os
+from pathlib import Path
 
 import json
 from datetime import datetime, timezone
@@ -1588,10 +1589,11 @@ class DataPoisoningAttack(BaseAttack):
         # save the results of the evolution process to json
         results = {
             "generation_stds": gen_stds.tolist(),
-            "generation_fitnesses": gen_fitnesses.tolist(),
             "best_stds": early_stopping.best_stds.tolist(),
+            "generation_fitnesses": gen_fitnesses.tolist(),
             "best_fitness": early_stopping.best_fitness,
-            "best_mean_probability": early_stopping.mean_probability,
+            "mean_probabilities": [log[2] for log in logging],
+            "last_mean_probability": early_stopping.mean_probability,
             "total_time_seconds": total_time,
             "meta": {
                 "N_GEN": N_GEN,
@@ -1611,7 +1613,8 @@ class DataPoisoningAttack(BaseAttack):
         }
 
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-        with open(f"./results/DataPoisoningAttack_evolution_results_{timestamp}.json", "w") as f:
+        filepath = Path(Path(__file__).parent, '..', '..', '..', 'skripts', 'results', f'DataPoisoningAttack_evolution_results_{timestamp}.json')
+        with open(filepath, "w") as f:
             json.dump(results, f, indent=4)
 
         # restore original explainer number of samples
