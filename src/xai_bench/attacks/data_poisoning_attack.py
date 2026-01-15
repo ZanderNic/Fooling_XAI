@@ -1545,7 +1545,7 @@ class DataPoisoningAttack(BaseAttack):
         self.explainer.num_samples = EXPLAINER_NUM_SAMPLES
         
         # determine feature bounds and categorical feature information
-        self.X_min, self.X_max = np.array(list(self.dataset..values())).T
+        self.X_min, self.X_max = np.array(list(self.dataset.scaled_feature_ranges.values())).T
         cat_mask = self.dataset.categorical_feature_mask
         self.X_cat = list(self.dataset.scaled_categorical_values.values())
 
