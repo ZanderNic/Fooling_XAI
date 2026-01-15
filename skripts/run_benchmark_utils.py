@@ -146,16 +146,16 @@ def load_attack(
 
         attack.fit(
             N_GEN=1,  # for testing
-            N_POP=10,
-            N_SAMPLE=3,
+            N_POP=20,
+            N_SAMPLE=10,
             INIT_MUTATION_RATE=1.0,
-            INIT_STD=0.0,
+            INIT_STD=0.2,
             P_ELITE=0.1,
             P_COMBINE=0.1,
-            DRIFT_THRESHOLD=0.1,
+            DRIFT_THRESHOLD=0.3,
             DRIFT_CONFIDENCE=0.95,
             EARLY_STOPPING_PATIENCE=7,
-            EXPLAINER_NUM_SAMPLES=100
+            EXPLAINER_NUM_SAMPLES=150
         )
 
         return attack

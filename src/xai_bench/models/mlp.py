@@ -64,7 +64,7 @@ class TorchMLP(BaseModel):
         device: Optional[Union[str, torch.device]] = None,
         seed: int = 0,
     ):
-        super().__init__(task,stats=(self,"TorchMLp"))
+        super().__init__(task,stats=(self,"TorchMLP"))
 
         if self.task == "classification":
             if not isinstance(num_classes, int) or num_classes < 2:
