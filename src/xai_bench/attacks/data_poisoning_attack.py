@@ -584,7 +584,6 @@ def population_fitness(
         valid_mask = prediction_mask,
         threshold = drift_threshold
     )
-
     print(f"\tEstimated probabilities:\n{estimated_probabilities}")
 
     print(f"\tCalculating estimated probs took {time.time() - section_time} seconds.")
@@ -596,8 +595,9 @@ def population_fitness(
         sample_size = valid_scores_amount,
         confidence=0.95
     )
-    mean_probability = lcb.mean()
+    print(f"\tLCB values:\n{lcb}")
 
+    mean_probability = lcb.mean()
     print(f"\tLCB mean: {mean_probability}")
 
     print(f"\tCalculating LCB took {time.time() - section_time} seconds.")
@@ -953,6 +953,8 @@ def produce_next_generation(
     assert 0 < elite_prop < 1
     assert isinstance(p_combine, float)
     assert 0 <= p_combine <= 1
+    assert isinstance(X_data, np.ndarray)
+    assert X_data.ndim == 2
     assert isinstance(X_min, np.ndarray)
     assert X_min.ndim == 1
     assert X_min.shape[0] == current_population[0][0].data.shape[1]
@@ -1543,7 +1545,7 @@ class DataPoisoningAttack(BaseAttack):
         self.explainer.num_samples = EXPLAINER_NUM_SAMPLES
         
         # determine feature bounds and categorical feature information
-        self.X_min, self.X_max = np.array(list(self.dataset.feature_ranges.values())).T
+        self.X_min, self.X_max = np.array(list(self.dataset..values())).T
         cat_mask = self.dataset.categorical_feature_mask
         self.X_cat = list(self.dataset.scaled_categorical_values.values())
 
