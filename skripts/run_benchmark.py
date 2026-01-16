@@ -72,7 +72,7 @@ METRICS = {
     "Cosine": CosineMetric,
     "Spearman": SpearmanMetric,
     # "KendallTau": KendallTauMetric,
-    "Distortion": DistortionMetric
+    # "Distortion": DistortionMetric
 }
 
 MODELS = ["CNN1D", "MLP", "RF"]
