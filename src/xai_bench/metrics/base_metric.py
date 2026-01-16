@@ -19,7 +19,7 @@ class BaseMetric(ABC):
     compute(e1: np.ndarray, e2: np.ndarray) -> float
         Compute the distance between two explanation vectors.
     """
-    def __init__(self, name: str):
+    def __init__(self, name: str="BaseMetric"):
         self.name = name
 
     # should be a distance, so maximising

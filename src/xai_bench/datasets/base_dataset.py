@@ -11,7 +11,7 @@ from pathlib import Path
 class BaseDataset(ABC):
     def __init__(
         self,
-        path: Union[str,Path],
+        path: Union[str,Path]="",
         test_size: float = 0.2,
         random_state: int = 42,
         stratify: bool = True,

@@ -78,7 +78,12 @@ class TorchCNN1D(BaseModel):
         torch.manual_seed(seed)
         np.random.seed(seed)
 
-        self.device = torch.device(device) if device is not None else torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if torch.cuda.is_available():
+            self.device = torch.device("cuda")
+        elif torch.mps.is_available():
+            self.device = torch.device("mps")
+        else:
+            self.device = torch.device("cpu")
         self.lr = lr
         self.weight_decay = weight_decay
         self.epochs = epochs
