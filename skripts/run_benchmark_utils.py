@@ -355,4 +355,4 @@ def smoke_test(run_func:Callable, datasets:dict[str,Type[BaseDataset]],metrics:d
             error_file = result_dir / (f"error_{time.time_ns()}.txt")
             console.print(Panel(f"[bold red]An error occured![/]\n\nFor further inforamtion look see [lightgray italic]{error_file}[/]",style="bold red"))
             with error_file.open("w") as f:
-                f.write(traceback.format_exc())
+                f.write(traceback.format_exc()+"\n\n"+f"Current Paramters: {dataset} - {metric} - {model} - {attack} - {explainer}")
