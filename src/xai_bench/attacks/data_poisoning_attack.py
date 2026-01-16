@@ -1079,8 +1079,9 @@ class EarlyStopping:
         self.confidence = confidence
         self.counter = 0
         self.fitnesses: list[float] = []
-        self.best_fitness = None
-        self.best_stds = None
+        self.best_fitness = np.inf
+        self.best_stds = np.empty(0)
+        self.mean_probability = -1.0
 
     def update(
         self,
@@ -1457,6 +1458,7 @@ class DataPoisoningAttack(BaseAttack):
         DRIFT_CONFIDENCE: float = 0.95,
         EARLY_STOPPING_PATIENCE: int = 10,
         EXPLAINER_NUM_SAMPLES: int = 100,
+        EVOLUTION_DATA_NUM_SAMPLES: int = 200,
     ):
         """
         Fits the data poisoning attack by using an evolutionary algorithm to find optimal
@@ -1524,8 +1526,15 @@ class DataPoisoningAttack(BaseAttack):
                 distribution and an increased estimated probability of the explanation drift 
                 constraint above the desired confidence level.
 
-            random_state (int):
-                An integer representing the random seed for reproducibility.
+            EXPLAINER_NUM_SAMPLES (int):
+                An integer representing the number of samples to use for the explainer during
+                the explanation process.
+
+            EVOLUTION_DATA_NUM_SAMPLES (int):
+                An integer representing the number of data samples to use from the dataset's
+                test data during the evolution process to evaluate the individuals in the population.
+                This can be used to speed up the fitting process on large datasets by using a
+                smaller subset of the data for the evolution.
         """
         assert isinstance(N_GEN, int) and N_GEN > 0
         assert isinstance(N_POP, int) and N_POP > 0
@@ -1549,9 +1558,22 @@ class DataPoisoningAttack(BaseAttack):
         cat_mask = self.dataset.categorical_feature_mask
         self.X_cat = list(self.dataset.scaled_categorical_values.values())
 
+        if EVOLUTION_DATA_NUM_SAMPLES < self.dataset.X_test_scaled.shape[0]:
+            # sample a subset of the test data for faster evolution
+            sampled_indices = self.rng.choice(
+                self.dataset.X_test_scaled.shape[0],
+                size=EVOLUTION_DATA_NUM_SAMPLES,
+                replace=False
+            )
+            X_data = self.dataset.X_test_scaled.iloc[sampled_indices].values
+            y_data = self.dataset.y_test.iloc[sampled_indices].values
+        else:
+            X_data = self.dataset.X_test_scaled.values
+            y_data = self.dataset.y_test.values
+
         # populate an initial population of std individuals
         initial_population = init_population(
-            reference_data=self.dataset.X_test_scaled.values,
+            reference_data=X_data,
             cat_mask=cat_mask,
             population_size=N_POP,
             mutation_rate=INIT_MUTATION_RATE,
@@ -1561,9 +1583,13 @@ class DataPoisoningAttack(BaseAttack):
         )
 
         # compute the reference explanation to compare the drift against
-        reference_explanations = self.explainer.explain(
-            self.dataset.X_test_scaled.values
-        )
+        reference_explanations = self.explainer.explain(X_data)
+
+        # determine prediction threshold relative to the target scaling for regression
+        if self.model.task == "regression":
+            prediction_threshold = self.epsilon * (y_data.max() - y_data.min())
+        else:
+            prediction_threshold = self.epsilon
 
         # start the evolution process
         gen_stds, gen_fitnesses, early_stopping, logging, total_time = evolve_population(
@@ -1576,13 +1602,13 @@ class DataPoisoningAttack(BaseAttack):
             n_generations=N_GEN,
             elite_prop=P_ELITE,
             p_combine=P_COMBINE,
-            X_data=self.dataset.X_test_scaled.values,
+            X_data=X_data,
             X_min=self.X_min,
             X_max=self.X_max,
             X_cat=self.X_cat,
             early_stopping_patience=EARLY_STOPPING_PATIENCE,
             rng=self.rng,
-            prediction_threshold=self.epsilon
+            prediction_threshold=prediction_threshold
         )
 
         # save the best found stds for data poisoning on the dataset
@@ -1696,7 +1722,7 @@ class DataPoisoningAttack(BaseAttack):
         # check validity of the poisoned x on every feature
         all_okay, _ = self.is_attack_valid(x, x_poisoned, epsilon=self.epsilon)
 
-        return np.where(all_okay[:, None], x_poisoned, x)
+        return np.where(all_okay.reshape(-1, 1), x_poisoned, x)
 
     def _generate(
         self,

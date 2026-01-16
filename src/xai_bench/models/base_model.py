@@ -153,3 +153,33 @@ class BaseModel(ABC):
         raise NotImplementedError(
             "predict_scalar is only defined for regression models."
         )
+
+    def score(self, X: np.ndarray, y: np.ndarray) -> float:
+        """
+        Compute the model's performance score on given data.
+
+        Behavior depends on the task:
+            * Classification: returns accuracy
+            * Regression: returns R^2 score
+
+        Args:
+            X (np.ndarray):
+                Input samples in the model's expected input format.
+
+            y (np.ndarray):
+                True target values, i.e. class labels for classification
+                or scalars for regression.
+
+        Returns:
+            float:
+                Performance score (accuracy for classification, R^2 for regression).
+        """
+        y_pred = self.predict(X)
+
+        if self.task == "classification":
+            return np.mean(y_pred == y)
+        else:  # regression
+            y_mean = np.mean(y)
+            ss_total = np.sum((y - y_mean) ** 2)
+            ss_residual = np.sum((y - y_pred) ** 2)
+            return 1 - (ss_residual / ss_total)

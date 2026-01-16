@@ -155,7 +155,7 @@ class LimeTabularAdapter(BaseExplainer):
                 num_samples= self.num_samples if num_samples is None else num_samples
             ) for x in X]
         else:  # regression
-            exp = [self._lime.explain_instance(
+            exps = [self._lime.explain_instance(
                 data_row=x,
                 predict_fn=self.model.predict_scalar,
                 num_features=x.shape[0],
@@ -268,7 +268,7 @@ class LimeTabularAdapter(BaseExplainer):
                     num_samples= self.num_samples if num_samples is None else num_samples
                 ) for x in batch]
             else:  # regression
-                exp = [expl.explain_instance(
+                exps = [expl.explain_instance(
                     data_row=x,
                     predict_fn=self.model.predict_scalar,
                     num_features=x.shape[0],
