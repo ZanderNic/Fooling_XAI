@@ -28,10 +28,10 @@ Given a configuration `(dataset, model, explainer, attack, metric)` the benchmar
 - generates adversarial samples `X_adv` from `X`
 - enforces prediction fidelity constraints (`<= epsilon`)
 - measures explanation drift (e.g. L2/ Cosine / Spearman)
-- exports results as JSON (scores, timings, counters)
+- exports results as $\texttt{JSON}$ (scores, timings, counters)
 
-**Important:** All attacks in this repository are **black-box**:
-they only require access to model outputs (`predict`, `predict_proba`) and do **not** rely on gradients.
+> **Important:**
+  All attacks in this repository are **black-box**, i.e. they only require access to model outputs (`predict`, `predict_proba`) and do **not** rely on gradients or other model internals.
 
 
 ## 🧨 Attacks (included)
@@ -62,7 +62,7 @@ they only require access to model outputs (`predict`, `predict_proba`) and do **
 
 ## 🚀 Installation (fast & simple)
 
-Our recommendation is to install the package into a clean virtual environment
+It is recommended to install the package into a clean virtual environment:
 
 ### 1) Create and activate a virtual environment
 ```bash
@@ -74,22 +74,22 @@ source .venv/bin/activate
 ```bash
 pip install -e .
 ```
-Editable mode (-e) is recommended so you can modify the source code without reinstalling the package.
+Use the editable mode (`-e`) to be able to modify the source code without reinstalling the package.
 
-After the installation is finished, you can run benchmark experiments right away.
+After the installation is finished, benchmark experiments can be run right away.
 
 
 ## ▶️ Run a benchmark
 To start an experiment, run the benchmark script with a specific configuration
-(dataset, model, attack, explainer, metric). The script will:
+(dataset, model, attack, explainer). The script will:
 
 - load and preprocess the dataset
 - train the selected model
 - fit the selected explainer
 - generate adversarial samples using the chosen attack
 - evaluate prediction fidelity (epsilon constraint)
-- compute explanation drift scores using the selected metric
-- write a results `.json` file into the `results/` directory
+- compute explanation drift scores using the available metrics
+- write the results to a $\texttt{JSON}$ file in the `results/` directory
 
 ### Arguments
 The argument format is as follows:
@@ -104,9 +104,9 @@ python skripts/run_benchmark.py <dataset> <model> <attack> <explainer> --seed <i
 - `<explainer>`: explanation method (e.g. `Lime`, `Shap`)
 - `--seed`: random seed for reproducibility (controls model init, explainer sampling, and attack randomness). Defaults to $42$.
 - `--num_samples`: Number of samples from the test set that are used for the evaluation. Defaults to $1,000$.
-- `--smoke-test`: If set to `True`, runs a quick test over all experiment combinations.
+- `--smoke-test`: If set, runs a quick test over all experiment combinations.
 
-After running the command, the benchmark prints the progress and saves all results as a JSON file.
+After running the command, the benchmark prints the progress and saves all results as a $\texttt{JSON}$ file.
 
 ### Example Run
 ```bash
@@ -125,11 +125,11 @@ When prompted either press `Enter` to select all or only specific parts that sho
 
 ## 🔧 Extending 
 
-This repo is designed to be extended easily:
+This repository is designed to be extended easily via inheritance:
 
 - add new attacks via BaseAttack
 - add new explainers via BaseExplainer
 - add new metrics via BaseMetric
 - add new datasets via BaseDataset
 
-Most additions only require a single new file
+Most additions only require a single new file and a registration in `skripts/run_benchmark.py`.
