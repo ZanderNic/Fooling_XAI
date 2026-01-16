@@ -52,7 +52,8 @@ from run_benchmark_utils import (
     get_attack_success,
     calculate_metrics,
     smoke_test,
-    infer_smoke_test
+    infer_smoke_test,
+    get_args
 )
 
 
@@ -224,7 +225,8 @@ def run(
         },
         "explain_scores_on_all": explain_scores_all,
         "explain_scores_on_success_only": explain_scores_on_success_only,
-        "stats":stats[1]
+        "stats":stats[1],
+        "args":get_args(model,dataset,attack,explainer)
     }
 
     return result

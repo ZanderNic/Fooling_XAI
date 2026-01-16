@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Type, Callable
 import traceback
+import inspect
 
 # 3-party imports
 import numpy as np
@@ -275,7 +276,7 @@ def get_attack_success(X:np.ndarray,X_adv:np.ndarray) -> tuple[np.ndarray, int, 
 def calculate_metrics(X_exp:np.ndarray, X_adv_exp:np.ndarray, METRICS:dict)->dict:
     explain_scores: Dict[str, dict] = {}
     for name, MetricCls in track(
-        METRICS.items(), description="Caluclating Explaination scores", transient=True
+        METRICS.items(), description="Caluclating Explaination scores", transient=True,console=console
     ):
         m: BaseMetric = MetricCls()
         s = m.compute(X_exp, X_adv_exp)
@@ -326,7 +327,6 @@ def smoke_test(run_func:Callable, datasets:dict[str,Type[BaseDataset]],metrics:d
             p = Panel(f"Current Paramters: {dataset} - {metric} - {model} - {attack} - {explainer}",style="cyan",expand=False)
             console.print(Align.center(p))
             # run run
-            x=x
             result = run_func(
                 dataset=datasets[dataset](),
                 model_name=model, # type: ignore
@@ -356,3 +356,36 @@ def smoke_test(run_func:Callable, datasets:dict[str,Type[BaseDataset]],metrics:d
             console.print(Panel(f"[bold red]An error occured![/]\n\nFor further inforamtion look see [lightgray italic]{error_file}[/]",style="bold red"))
             with error_file.open("w") as f:
                 f.write(traceback.format_exc()+"\n\n"+f"Current Paramters: {dataset} - {metric} - {model} - {attack} - {explainer}")
+
+
+def _json_safe(value):
+    try:
+        json.dumps(value)
+        return value
+    except (TypeError, OverflowError):
+        return str(value)
+    
+def get_args(*objects):
+    result = {}
+
+    for obj in objects:
+        cls = obj.__class__
+        name = cls.__name__
+
+        sig = inspect.signature(cls.__init__)
+        params = list(sig.parameters.values())[1:]  # skip self
+
+        init_args = {}
+        for p in params:
+            if hasattr(obj, p.name):
+                value = getattr(obj, p.name)
+            elif p.default is not inspect._empty:
+                value = p.default
+            else:
+                value = None
+
+            init_args[p.name] = _json_safe(value)
+
+        result[name] = init_args
+
+    return result
