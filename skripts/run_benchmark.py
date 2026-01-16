@@ -3,6 +3,10 @@ import sys
 from pathlib import Path
 from rich import print as rich_print
 from rich.progress import track
+from rich.panel import Panel
+from rich.align import Align
+import time 
+from itertools import product
 
 try:
     import xai_bench  # noqa: F401
@@ -18,7 +22,7 @@ import argparse
 import json
 from dataclasses import asdict
 from datetime import datetime, timezone
-from typing import Dict, Literal
+from typing import Dict, Literal, Optional
 
 # 3-party imports
 import numpy as np
@@ -81,8 +85,17 @@ def run(
     seed: int,
     num_samples: int = 1000,
     epsilon: float = 0.05,
+    train_samples: Optional[int]=None
 ):
     """ """
+
+    if train_samples is not None:
+        dataset.X_test = dataset.X_test[:train_samples] # type: ignore
+        dataset.X_test_scaled = dataset.X_test_scaled[:train_samples] # type: ignore
+        dataset.X_train = dataset.X_train[:train_samples] # type: ignore
+        dataset.X_train_scaled = dataset.X_train_scaled[:train_samples] # type: ignore
+        dataset.y_test = dataset.y_test[:train_samples] # type: ignore
+        dataset.y_train = dataset.y_train[:train_samples] # type: ignore
 
     # load model
     with console.status(f"{TC} Loading model: {model_name}", spinner="shark"):
@@ -237,35 +250,85 @@ if __name__ == "__main__":
         default=1000,
         help="Num samples from the test set that are used for the evaluation",
     )
+    parser.add_argument(
+        "-s", "--smoke-test",
+        action='store_true',
+        help= "Run a smoke test over all available datatsets/attacks/explainers/metrics and save overview result. Will ignore all other parameters."
+    )
 
     args = parser.parse_args()
+    if args.smoke_test:
+        # print run smoek test
+        console.print(
+            Panel(
+                Align.center("SMOKE TEST",vertical="middle"),
+                style="bold red",
+                border_style="red",
+                padding=(3,10)
+                )
+            )
+        num_samples = 2
+        console.print(Align.center(f"Over the parameters:  {list(DATASETS.keys())},{list(METRICS.keys())},{MODELS}, {ATTACKS}, {EXPLAINER}"),style="bold red")
+        console.print(Align.center(f"Using only [bold cyan]{num_samples}[/bold cyan] samples."),style="bold red")
+        result_dir = Path(f"./results/smoke_test_{time.time()}")
+        result_dir.mkdir(parents=True, exist_ok=True)
+        for dataset, metric, model, attack, explainer in track(product(DATASETS.keys(),METRICS.keys(),MODELS,ATTACKS,EXPLAINER),description="Going through all settings",total=len(DATASETS)*len(METRICS)*len(MODELS)*len(ATTACKS)*len(EXPLAINER), console=console):
+            # print settings
+            p = Panel(f"Current Paramters: {dataset} - {metric} - {model} - {attack} - {explainer}",style="cyan",expand=False)
+            console.print(Align.center(p))
+            # run run
+            result = run(
+                dataset=DATASETS[dataset](),
+                model_name=model, # type: ignore
+                attack_name=attack, # type: ignore 
+                explainer_name=explainer, # type: ignore
+                metric=METRICS[metric](),
+                seed=42,
+                num_samples=num_samples,
+                train_samples=num_samples
+            )
+            # save results
+            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+            filename = (
+                f"{dataset}__"
+                f"{model}__"
+                f"{explainer}__"
+                f"{attack}__"
+                f"seed{42}__"
+                f"{timestamp}.json"
+            )
 
-    console.print(f"[#69db88][RUN][/#69db88]{TC} Starting new run with: [/]", args)
-    result = run(
-        dataset=DATASETS[args.dataset](),
-        model_name=args.model,
-        attack_name=args.attack,
-        explainer_name=args.explainer,
-        metric=METRICS[args.metric](),
-        seed=args.seed,
-        num_samples=args.num_samples
-    )
+            out_path = result_dir / filename
+            with out_path.open("w", encoding="utf-8") as f:
+                json.dump(result, f, indent=2, ensure_ascii=False)
+        exit(0)
+    else:
+        console.print(f"[#69db88][RUN][/#69db88]{TC} Starting new run with: [/]", args)
+        result = run(
+            dataset=DATASETS[args.dataset](),
+            model_name=args.model,
+            attack_name=args.attack,
+            explainer_name=args.explainer,
+            metric=METRICS[args.metric](),
+            seed=args.seed,
+            num_samples=args.num_samples,
+        )
 
-    results_dir = Path("results")
-    results_dir.mkdir(parents=True, exist_ok=True)
+        results_dir = Path("results")
+        results_dir.mkdir(parents=True, exist_ok=True)
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-    filename = (
-        f"{args.dataset}__"
-        f"{args.model}__"
-        f"{args.explainer}__"
-        f"{args.attack}__"
-        f"seed{args.seed}__"
-        f"{timestamp}.json"
-    )
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+        filename = (
+            f"{args.dataset}__"
+            f"{args.model}__"
+            f"{args.explainer}__"
+            f"{args.attack}__"
+            f"seed{args.seed}__"
+            f"{timestamp}.json"
+        )
 
-    out_path = results_dir / filename
-    with out_path.open("w", encoding="utf-8") as f:
-        json.dump(result, f, indent=2, ensure_ascii=False)
+        out_path = results_dir / filename
+        with out_path.open("w", encoding="utf-8") as f:
+            json.dump(result, f, indent=2, ensure_ascii=False)
 
-    console.print(f"[bold cyan][OK][/] Results saved to: [italic #9c9c9c]{out_path}[/]",highlight=False)
+        console.print(f"[bold cyan][OK][/] Results saved to: [italic #9c9c9c]{out_path}[/]",highlight=False)
