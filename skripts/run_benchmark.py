@@ -237,7 +237,7 @@ if __name__ == "__main__":
     parser.add_argument("model", choices=MODELS)
     parser.add_argument("attack", choices=ATTACKS)
     parser.add_argument("explainer", choices=EXPLAINER)
-    parser.add_argument("metric", choices=METRICS.keys())
+    # parser.add_argument("metric", choices=METRICS.keys())
     parser.add_argument(
         "--seed",
         type=int,
@@ -268,11 +268,11 @@ if __name__ == "__main__":
                 )
             )
         num_samples = 2
-        console.print(Align.center(f"Over the parameters:  {list(DATASETS.keys())},{list(METRICS.keys())},{MODELS}, {ATTACKS}, {EXPLAINER}"),style="bold red")
+        console.print(Align.center(f"Over the parameters:  {list(DATASETS.keys())},{['L2']},{MODELS}, {ATTACKS}, {EXPLAINER}"),style="bold red")
         console.print(Align.center(f"Using only [bold cyan]{num_samples}[/bold cyan] samples."),style="bold red")
         result_dir = Path(f"./results/smoke_test_{time.time()}")
         result_dir.mkdir(parents=True, exist_ok=True)
-        for dataset, metric, model, attack, explainer in track(product(DATASETS.keys(),METRICS.keys(),MODELS,ATTACKS,EXPLAINER),description="Going through all settings",total=len(DATASETS)*len(METRICS)*len(MODELS)*len(ATTACKS)*len(EXPLAINER), console=console):
+        for dataset, metric, model, attack, explainer in track(product(DATASETS.keys(),["L2"],MODELS,ATTACKS,EXPLAINER),description="Going through all settings",total=len(DATASETS)*len(METRICS)*len(MODELS)*len(ATTACKS)*len(EXPLAINER), console=console):
             # print settings
             p = Panel(f"Current Paramters: {dataset} - {metric} - {model} - {attack} - {explainer}",style="cyan",expand=False)
             console.print(Align.center(p))
@@ -282,7 +282,7 @@ if __name__ == "__main__":
                 model_name=model, # type: ignore
                 attack_name=attack, # type: ignore 
                 explainer_name=explainer, # type: ignore
-                metric=METRICS[metric](),
+                metric=METRICS["L2"](),
                 seed=42,
                 num_samples=num_samples,
                 train_samples=num_samples
@@ -309,7 +309,7 @@ if __name__ == "__main__":
             model_name=args.model,
             attack_name=args.attack,
             explainer_name=args.explainer,
-            metric=METRICS[args.metric](),
+            metric=METRICS["L2"](),
             seed=args.seed,
             num_samples=args.num_samples,
         )
