@@ -1,5 +1,6 @@
 import pandas as pd
 from xai_bench.datasets.base_dataset import BaseDataset
+from pathlib import Path
 
 
 class PrisoneresDataset(BaseDataset):
@@ -9,6 +10,7 @@ class PrisoneresDataset(BaseDataset):
         self.target = "is_recid"
         self.task = "classification"
         
+        path = str(path) if path is not None else f"{Path(__file__).parent}/compas_recidivism_racial_bias.csv"     
         super().__init__(path, **kwargs)
 
     def read(self) -> pd.DataFrame:
@@ -36,7 +38,7 @@ class PrisoneresDataset(BaseDataset):
 if __name__ == "__main__":
     path = "src/xai_bench/datasets/compas_recidivism_racial_bias.csv"
 
-    dataset = PrisoneresDataset(path)
+    dataset = PrisoneresDataset(path=None)
 
     print("Raw data shape:", dataset.df_raw.values.shape)
     print("X_train shape:", dataset.X_train.shape)
