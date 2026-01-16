@@ -1439,8 +1439,7 @@ class DataPoisoningAttack(BaseAttack):
             epsilon (float):
                 A float value representing the maximum allowed perturbation for each feature.
         """
-        super().__init__(model, task, epsilon, stats=[self,"DataPoisoningAttack"])
-        self.dataset = dataset
+        super().__init__(model, task, epsilon, stats=[self,"DataPoisoningAttack"],dataset=dataset)
         self.explainer = explainer
 
         self.rng = np.random.default_rng(seed=random_state)

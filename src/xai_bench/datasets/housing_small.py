@@ -7,14 +7,16 @@ from xai_bench.datasets.base_dataset import BaseDataset
 from sklearn.preprocessing import StandardScaler
 
 
-class HousingDataset(BaseDataset):
+class HousingSmallDataset(BaseDataset):
     def __init__(self, path: Union[str, Path] = None, **kwargs):   
-        self.categorical_features = [ "waterfront", 'view']
-        self.numerical_features = ['bedrooms', 'bathrooms', 'sqft_living','sqft_lot', 'floors', 'condition', 'grade', 'sqft_above', 'sqft_basement', 'yr_built', 'yr_renovated', 'zipcode', 'lat', 'long', 'sqft_living15', 'sqft_lot15']
-        self.target = "price"
+        self.categorical_features = [ "Location"]
+
+        
+        self.numerical_features = ["Size_in_sq_ft", "Year_Built"]
+        self.target = "Price_in_USD"
         self.task = "regression"
         
-        path = str(path) if path is not None else f"{Path(__file__).parent}/housing.csv"     
+        path = str(path) if path is not None else f"{Path(__file__).parent}/housing_small.csv"     
         super().__init__(path, task=self.task, **kwargs)
 
 
@@ -25,24 +27,18 @@ class HousingDataset(BaseDataset):
     def preprocess(self) -> pd.DataFrame:
         assert self.df_raw is not None, "Dataframe was not read in."
 
-        self.df_raw = self._create_month_index(self.df_raw)
         self.df_raw = self.df_raw.drop(columns=["id"])
 
         df = self.df_raw.copy()
 
         self.y_full = df[self.target]
         self.y_full = self._scale_target(self.y_full) # scaling target variable
-        self.y_range = {
-            "min": self.y_full.min(),
-            "max": self.y_full.max()
-        }
-
         # inverse transform -> self.scaler_y.inverse_transofrm
 
         X = df.drop(columns=[self.target])
-        X = X.astype(float)
 
         X = self.one_hot_encode_with_mapping(X, self.categorical_features)
+        X = X.astype(float)
 
         for col in X.columns:
             if col not in sum(self.feature_mapping.values(), []):
@@ -59,8 +55,10 @@ class HousingDataset(BaseDataset):
 
         start = df["date"].min()
         df["month_index"] = ((df["year"] - start.year) * 12 + (df["month"] - start.month))
+        print(df["month_index"].value_counts())
 
         df = df.drop(columns=["year", "date", "month"])
+
         return df
     
     def _scale_target(self, y: pd.Series) -> pd.Series:
@@ -77,9 +75,9 @@ class HousingDataset(BaseDataset):
 if __name__ == "__main__":
     import os
 
-    path = "src/xai_bench/datasets/housing.csv"
+    path = "src/xai_bench/datasets/housing_small.csv"
 
-    dataset = HousingDataset(path)
+    dataset = HousingSmallDataset(path)
 
     print("Raw data shape:", dataset.df_raw.values.shape)
     print("X_train shape:", dataset.X_train.shape)
@@ -88,4 +86,5 @@ if __name__ == "__main__":
     print("Orignial columns:", dataset.df_raw.columns)
     print("Column mapping:", dataset.feature_mapping)
 
+    print(dataset.X_full)
     

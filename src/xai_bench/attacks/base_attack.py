@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 
-from xai_bench.base import BaseModel
+from xai_bench.base import BaseModel, BaseDataset
 from typing import Literal, overload, Optional
 from numbers import Number
 import pandas as pd
@@ -9,11 +9,12 @@ from jaxtyping import Shaped
 from xai_bench.stat_collector import StatCollector
 
 class BaseAttack(ABC):
-    def __init__(self, model: BaseModel, task: Literal["classification","regression"], epsilon:Optional[float], stats):
+    def __init__(self, model: BaseModel, task: Literal["classification","regression"], epsilon:Optional[float], stats, dataset:BaseDataset):
         self.model = model
         self.task: Literal["classification","regression"] = task
         self.epsilon: Optional[float] = epsilon
         self.stats = StatCollector(obj=stats[0],comment=stats[1])
+        self.dataset = dataset
     """
     Call beforehand in order to setup the attack. (e.g. finding best parameters)
     """
@@ -68,6 +69,9 @@ class BaseAttack(ABC):
     def is_attack_valid(self, X, X_adv, epsilon=None):
         # prediction distance
         p_dist = self._prediction_distance(X,X_adv)
+        if self.task=="regression":
+            # scale to [0-1] in case of regression
+            p_dist = (p_dist-self.dataset.y_range["max"])/(self.dataset.y_range["max"]/self.dataset.y_range["min"])
         # epsilon
         if epsilon is None:
             assert self.epsilon is not None, "At least one epsilon must be present"
