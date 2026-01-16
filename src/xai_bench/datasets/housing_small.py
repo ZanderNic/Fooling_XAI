@@ -7,7 +7,7 @@ from xai_bench.datasets.base_dataset import BaseDataset
 from sklearn.preprocessing import StandardScaler
 
 
-class HousingDataset(BaseDataset):
+class HousingSmallDataset(BaseDataset):
     def __init__(self, path: Union[str, Path] = None, **kwargs):   
         self.categorical_features = [ "Location"]
 
@@ -77,7 +77,7 @@ if __name__ == "__main__":
 
     path = "src/xai_bench/datasets/housing_small.csv"
 
-    dataset = HousingDataset(path)
+    dataset = HousingSmallDataset(path)
 
     print("Raw data shape:", dataset.df_raw.values.shape)
     print("X_train shape:", dataset.X_train.shape)
