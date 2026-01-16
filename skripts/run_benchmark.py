@@ -175,7 +175,7 @@ def run(
         model_attack_fidelity  = model.score(
             X_adv, model.predict(X_test)
         )
-    console.print(f"{RUN_TEXT} Calculated attack accuracy")
+    console.print(f"{RUN_TEXT} Calculated model attack fidelity")
 
     # generate explanation for real dataset X_test and X_adv
     with console.status(f"{TC} Explaining real X", spinner="shark"):
