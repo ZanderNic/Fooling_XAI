@@ -14,8 +14,7 @@ class HousingDataset(BaseDataset):
         self.target = "price"
         self.task = "regression"
         
-        path = str(path) if path is not None else f"{Path(__file__).parent}/housing.csv" 
-    
+        path = str(path) if path is not None else f"{Path(__file__).parent}/housing.csv"     
         super().__init__(path, task=self.task, **kwargs)
 
 
@@ -71,6 +70,8 @@ class HousingDataset(BaseDataset):
 
 
 if __name__ == "__main__":
+    import os
+
     path = "src/xai_bench/datasets/housing.csv"
 
     dataset = HousingDataset(path)

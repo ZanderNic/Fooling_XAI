@@ -21,7 +21,6 @@ from datetime import datetime, timezone
 from typing import Dict, Literal
 
 # 3-party imports
-from sklearn.metrics import accuracy_score
 import numpy as np
 
 
@@ -104,8 +103,8 @@ def run(
         "Something went wrong with the dataset"
     )
     with console.status(f"{TC} Calculating accuracy", spinner="shark"):
-        acc = accuracy_score(
-            dataset.y_test.values, model.predict(dataset.X_test_scaled.values)
+        acc = model.score(
+            dataset.X_test_scaled.values, dataset.y_test.values
         )
     console.print(f"{RUN_TEXT} Calculated accuracy")
 
@@ -138,9 +137,14 @@ def run(
 
     # how many samples to get the score
     if len(dataset.X_test_scaled) <= num_samples:
-        X_test = dataset.X_test_scaled
+        X_test = dataset.X_test_scaled.values
+        y_test = dataset.y_test.values
     else:
-        X_test = dataset.X_test_scaled.sample(n=num_samples)
+        sample_indices = np.random.RandomState(seed).choice(
+            dataset.X_test_scaled.shape[0], size=num_samples, replace=False
+        )
+        X_test = dataset.X_test_scaled.iloc[sample_indices].values
+        y_test = dataset.y_test.iloc[sample_indices].values
 
 
     with console.status(f"{TC} Generate attack", spinner="shark"):
@@ -148,27 +152,27 @@ def run(
     console.print(f"{RUN_TEXT} Generated Attack")
 
     with console.status(f"{TC} Calculating attack accuracy  ", spinner="shark"):
-        predict_accuracy  = accuracy_score(
-            dataset.y_test.values, model.predict(X_adv)
+        predict_accuracy  = model.score(
+            X_adv, y_test
         )
     console.print(f"{RUN_TEXT} Calculated attack accuracy")
 
     with console.status(f"{TC} Calculating model fidelity after attack  ", spinner="shark"):
-        model_attack_fidelity  = accuracy_score(
-            model.predict(X_test), model.predict(X_adv)
+        model_attack_fidelity  = model.score(
+            X_adv, model.predict(X_test)
         )
     console.print(f"{RUN_TEXT} Calculated attack accuracy")
 
     # generate explanation for real dataset X_test and X_adv
     with console.status(f"{TC} Explaining real X", spinner="shark"):
-        x_real_exp = explainer.explain(np.asarray(X_test))
+        x_real_exp = explainer.explain(X_test)
 
     with console.status(f"{TC} Explaining adversarial X", spinner="shark"):
         x_adv_exp = explainer.explain(X_adv)
     console.print(f"{RUN_TEXT} All X explained")
 
     # get attack success
-    mask, succ_count, succ_rate = get_attack_success(X_test.to_numpy(),X_adv)
+    mask, succ_count, succ_rate = get_attack_success(X_test, X_adv)
 
     with console.status(f"{TC} Calcualting Scores on ALL data and only successfull attacks", spinner="shark"):
         explain_scores_all = calculate_metrics(x_real_exp,x_adv_exp,METRICS)
@@ -191,7 +195,7 @@ def run(
             "attack": attack.__class__.__name__,
             "explainer": explainer.__class__.__name__,
             "selected_metric_for_attack": metric.__class__.__name__,
-            "num_samples": int(len(X_test)),
+            "num_samples": X_test.shape[0],
         },
         "timing": {
             "explainer_fit": asdict(t_exp_fit),
