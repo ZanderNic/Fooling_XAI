@@ -175,7 +175,8 @@ def load_attack(
         attack =  ColumnSwitchAttack(
             model=model,
             task= dataset.task,
-            epsilon=epsilon
+            epsilon=epsilon,
+            dataset=dataset
             #explainer=explainer,
             #metric=metric,
             #random_state=seed,
