@@ -175,14 +175,18 @@ def load_attack(
         attack =  ColumnSwitchAttack(
             model=model,
             task= dataset.task,
+            dataset=dataset,
+            metric=metric,
             epsilon=epsilon,
-            dataset=dataset
+            n_switches=4,
+            max_tries=1000,
+            numerical_only=True
             #explainer=explainer,
             #metric=metric,
             #random_state=seed,
         )
         
-        attack.fit(dataset=dataset, n_switches=5, max_tries=1000, numerical_only=True)
+        attack.fit()
         return attack
     
     if attack_string == "DataPoisoningAttack":
