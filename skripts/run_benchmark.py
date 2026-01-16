@@ -71,7 +71,7 @@ METRICS = {
     "L2": L2Metric,
     "Cosine": CosineMetric,
     "Spearman": SpearmanMetric,
-    "KendallTau": KendallTauMetric,
+    # "KendallTau": KendallTauMetric,
     "Distortion": DistortionMetric
 }
 
