@@ -1,9 +1,10 @@
 import pandas as pd
 from xai_bench.datasets.base_dataset import BaseDataset
-
+from pathlib import Path
+from typing import Optional
 
 class ForestDataset(BaseDataset):
-    def __init__(self, path: str, **kwargs):
+    def __init__(self, path: Optional[str]=None, **kwargs):
         self.categorical_features = [
                                 "Wilderness_Area1",
                                 "Wilderness_Area2",
