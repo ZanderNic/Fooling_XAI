@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Type, Callable
+import traceback
 
 # 3-party imports
 import numpy as np
@@ -320,31 +321,38 @@ def smoke_test(run_func:Callable, datasets:dict[str,Type[BaseDataset]],metrics:d
     result_dir = Path(f"./results/smoke_test_{time.time()}")
     result_dir.mkdir(parents=True, exist_ok=True)
     for dataset, metric, model, attack, explainer in track(product(datasets.keys(),["L2"],models,attacks,explainers),description="Going through all settings",total=len(datasets)*len(models)*len(attacks)*len(explainers), console=console):
-        # print settings
-        p = Panel(f"Current Paramters: {dataset} - {metric} - {model} - {attack} - {explainer}",style="cyan",expand=False)
-        console.print(Align.center(p))
-        # run run
-        result = run_func(
-            dataset=datasets[dataset](),
-            model_name=model, # type: ignore
-            attack_name=attack, # type: ignore 
-            explainer_name=explainer, # type: ignore
-            metric=metrics["L2"](),
-            seed=42,
-            num_samples=num_samples,
-            train_samples=num_samples
-        )
-        # save results
-        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-        filename = (
-            f"{dataset}__"
-            f"{model}__"
-            f"{explainer}__"
-            f"{attack}__"
-            f"seed{42}__"
-            f"{timestamp}.json"
-        )
+        try:
+            # print settings
+            p = Panel(f"Current Paramters: {dataset} - {metric} - {model} - {attack} - {explainer}",style="cyan",expand=False)
+            console.print(Align.center(p))
+            # run run
+            x=x
+            result = run_func(
+                dataset=datasets[dataset](),
+                model_name=model, # type: ignore
+                attack_name=attack, # type: ignore 
+                explainer_name=explainer, # type: ignore
+                metric=metrics["L2"](),
+                seed=42,
+                num_samples=num_samples,
+                train_samples=num_samples
+            )
+            # save results
+            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+            filename = (
+                f"{dataset}__"
+                f"{model}__"
+                f"{explainer}__"
+                f"{attack}__"
+                f"seed{42}__"
+                f"{timestamp}.json"
+            )
 
-        out_path = result_dir / filename
-        with out_path.open("w", encoding="utf-8") as f:
-            json.dump(result, f, indent=2, ensure_ascii=False)
+            out_path = result_dir / filename
+            with out_path.open("w", encoding="utf-8") as f:
+                json.dump(result, f, indent=2, ensure_ascii=False)
+        except Exception:
+            error_file = result_dir / (f"error_{time.time_ns()}.txt")
+            console.print(Panel(f"[bold red]An error occured![/]\n\nFor further inforamtion look see [lightgray italic]{error_file}[/]",style="bold red"))
+            with error_file.open("w") as f:
+                f.write(traceback.format_exc())
