@@ -44,6 +44,8 @@ from xai_bench.datasets.covtype_forest import ForestDataset
 from xai_bench.metrics.cosine_metric import CosineMetric
 from xai_bench.metrics.spearmen_metric import SpearmanMetric
 from xai_bench.metrics.l2_metric import L2Metric
+from xai_bench.metrics.kendall_tau_metric import KendallTauMetric
+from xai_bench.metrics.distortion_metric import DistortionMetric
 
 # utils imports
 from run_benchmark_utils import (
@@ -69,6 +71,8 @@ METRICS = {
     "L2": L2Metric,
     "Cosine": CosineMetric,
     "Spearman": SpearmanMetric,
+    "KendallTau": KendallTauMetric,
+    "Distortion": DistortionMetric
 }
 
 MODELS = ["CNN1D", "MLP", "RF"]
