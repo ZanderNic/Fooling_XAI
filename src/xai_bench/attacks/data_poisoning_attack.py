@@ -125,16 +125,15 @@ def manipulation_loss(
     assert len(weights) == 2
     assert all(isinstance(w, (int, float)) and 0 <= w for w in weights)
 
-    # produce distance metrics in [0, infinity)
-    explanation_distance = distance_fn(
-        explanation_importance_values[0],
-        explanation_importance_values[1]
-    )
+    def normalize(x):
+        s = np.sum(np.abs(x), axis=-1, keepdims=True)
+        return x / s if np.all(s > 0) else x
 
-    # transform the distance to a [0, 1] range
-    # with the assumption distance -> infinity => loss -> 1
-    distance_transform = lambda x: 1 / (-x - 1) + 1
-    explanation_distance = distance_transform(explanation_distance)
+    # produce distance metric in [0, 1]
+    explanation_distance = distance_fn(
+        normalize(explanation_importance_values[0]),
+        normalize(explanation_importance_values[1])
+    )
 
     # produce order ranking distance in [0, 1]
     order_ranking_distance = order_ranking_fn(
