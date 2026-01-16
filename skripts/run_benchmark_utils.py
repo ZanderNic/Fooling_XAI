@@ -196,9 +196,9 @@ def load_attack(
         )
 
         attack.fit(
-            N_GEN=1,  # 120,
-            N_POP=2,  # 20,
-            N_SAMPLE=3,  # 10,
+            N_GEN=120,
+            N_POP=20,
+            N_SAMPLE=10,
             INIT_MUTATION_RATE=1.0,
             INIT_STD=0.2,
             P_ELITE=0.05,
