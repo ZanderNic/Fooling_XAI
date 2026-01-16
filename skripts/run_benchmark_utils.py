@@ -177,12 +177,11 @@ def load_attack(
             task= dataset.task,
             dataset=dataset,
             metric=metric,
+            explainer=explainer,
             epsilon=epsilon,
             n_switches=4,
             max_tries=1000,
             numerical_only=True
-            #explainer=explainer,
-            #metric=metric,
             #random_state=seed,
         )
         

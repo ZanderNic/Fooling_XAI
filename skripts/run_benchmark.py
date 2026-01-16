@@ -110,7 +110,6 @@ def run(
     assert dataset.X_train_scaled is not None and dataset.y_train is not None, (
         "Something went wrong with the dataset"
     )
-    console.print(dataset.features,dataset.feature_mapping)
     with console.status(f"{TC} Fitting Model", spinner="shark"):
         model.fit(dataset.X_train_scaled.values, dataset.y_train.values)
     console.print(f"{RUN_TEXT} Fitted Model ")

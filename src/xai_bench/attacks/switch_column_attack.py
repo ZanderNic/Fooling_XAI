@@ -4,7 +4,7 @@ from typing import Optional, Literal, Union, Any, overload
 from itertools import permutations
 import math
 
-from xai_bench.base import BaseModel, BaseDataset, BaseAttack, BaseMetric
+from xai_bench.base import BaseModel, BaseDataset, BaseAttack, BaseMetric,BaseExplainer
 from rich.progress import (
     Progress,
     TextColumn,
@@ -21,6 +21,7 @@ class ColumnSwitchAttack(BaseAttack):
         task: Literal["classification", "regression"],
         dataset: BaseDataset,
         metric:BaseMetric,
+        explainer: BaseExplainer,
         epsilon: Optional[float] = None,
         n_switches: int = 3,
         max_tries: int = 1000,
@@ -48,6 +49,7 @@ class ColumnSwitchAttack(BaseAttack):
         self.n_switches = n_switches
         self.numerical_only = numerical_only
         self.metric = metric
+        self.explainer = explainer
 
         if numerical_only:
             self.feature_indexes = [
@@ -68,7 +70,7 @@ class ColumnSwitchAttack(BaseAttack):
     def _generate(self, x:np.ndarray) -> np.ndarray:
         with self._get_progress_bar() as progress:
             task = progress.add_task(
-                        "[bold #ed1cdf][CSA][/] [#f7c8f3] Generating Attack Sample...",
+                        "[bold #ed1cdf][CSA][/] [#f7c8f3] Generating One Sample...",
                         total=math.factorial(len(self.feature_indexes))
                         / math.factorial(len(self.feature_indexes) - self.n_switches) if self.max_tries is None else self.max_tries,
                         combi="",
@@ -84,8 +86,10 @@ class ColumnSwitchAttack(BaseAttack):
                         # attack is not valid, so dont even evaluate metrics
                         progress.update(task, advance=1)
                         continue
+                    # get explainations:
+                    x_exp, x_tmp_exp = self.explainer.explain(np.expand_dims(x,axis=0)), self.explainer.explain(np.expand_dims(x_tmp,axis=0))
                     # evalute based on given emtric
-                    score = self.metric.compute(np.expand_dims(x,axis=0),np.expand_dims(x_tmp,axis=0))
+                    score = self.metric.compute(x_exp,x_tmp_exp)
                     if score>best_attack["score"]:
                         best_attack["combi"] = combi
                         best_attack["score"] = score
@@ -103,8 +107,10 @@ class ColumnSwitchAttack(BaseAttack):
                         # attack is not valid, so dont even evaluate metrics
                         progress.update(task, advance=1)
                         continue
+                    # get explainations:
+                    x_exp, x_tmp_exp = self.explainer.explain(np.expand_dims(x,axis=0)), self.explainer.explain(np.expand_dims(x_tmp,axis=0))
                     # evalute based on given emtric
-                    score = self.metric.compute(np.expand_dims(x,axis=0),np.expand_dims(x_tmp,axis=0))
+                    score = self.metric.compute(x_exp,x_tmp_exp)
                     if score>best_attack["score"]:
                         best_attack["combi"] = combi
                         best_attack["score"] = score
@@ -116,6 +122,7 @@ class ColumnSwitchAttack(BaseAttack):
         # return attack
         if best_attack["combi"] is None:
             # no valid attack was found
+            console.print("[bold #ed1cdf][CSA][/] [red] Could not find valid attack for sample.")
             return x
         else:
             return self._switch_columns(x,best_attack["combi"])
