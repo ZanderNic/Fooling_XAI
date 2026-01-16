@@ -32,6 +32,11 @@ class HousingDataset(BaseDataset):
 
         self.y_full = df[self.target]
         self.y_full = self._scale_target(self.y_full) # scaling target variable
+        self.y_range = {
+            "min": self.y_full.min(),
+            "max": self.y_full.max()
+        }
+
         # inverse transform -> self.scaler_y.inverse_transofrm
 
         X = df.drop(columns=[self.target])
