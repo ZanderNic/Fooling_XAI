@@ -69,8 +69,7 @@ class MonteCarloAttack(BaseAttack):
         seed: int = None,
         task: Literal["classification", "regression"] = "classification",
     ):
-        super().__init__(model=model, task=task, epsilon=epsilon, stats=[self, "MonteCarloAttack"])
-        self.dataset = dataset
+        super().__init__(model=model, task=task, epsilon=epsilon, stats=[self, "MonteCarloAttack"],dataset=dataset)
         self.explainer = explainer
         self.metric = metric
         
