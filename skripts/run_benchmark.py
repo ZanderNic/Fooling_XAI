@@ -2,18 +2,13 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from rich import print as rich_print
-from rich.progress import track
-from rich.panel import Panel
-from rich.align import Align
-import time 
-from itertools import product
 
 try:
     import xai_bench  # noqa: F401
 except ModuleNotFoundError:
     # in case module not correcltyloaded hardcode path
     rich_print(
-        f"[#aa0000][bold]xai_bench not found![/bold] Adding [italic #222222]{(Path(__file__).parent.parent / 'src').__str__()}[/italic #222222] into python path.[/#aa0000]"
+        f"[bold][red]xai_bench not found![/bold] Adding [italic #222222]{(Path(__file__).parent.parent / 'src').__str__()}[/italic #222222] into python path.[/]"
     )
     sys.path.insert(0, (Path(__file__).parent.parent / "src").__str__())
 
@@ -55,7 +50,10 @@ from run_benchmark_utils import (
     now_utc_iso,
     timed_call,
     get_attack_success,
-    calculate_metrics
+    calculate_metrics,
+    smoke_test,
+    infer_smoke_test,
+    get_args
 )
 
 
@@ -71,8 +69,8 @@ METRICS = {
     "L2": L2Metric,
     "Cosine": CosineMetric,
     "Spearman": SpearmanMetric,
-    "KendallTau": KendallTauMetric,
-    "Distortion": DistortionMetric
+    # "KendallTau": KendallTauMetric,
+    # "Distortion": DistortionMetric
 }
 
 MODELS = ["CNN1D", "MLP", "RF"]
@@ -110,7 +108,6 @@ def run(
     assert dataset.X_train_scaled is not None and dataset.y_train is not None, (
         "Something went wrong with the dataset"
     )
-    console.print(dataset.features,dataset.feature_mapping)
     with console.status(f"{TC} Fitting Model", spinner="shark"):
         model.fit(dataset.X_train_scaled.values, dataset.y_train.values)
     console.print(f"{RUN_TEXT} Fitted Model ")
@@ -228,7 +225,8 @@ def run(
         },
         "explain_scores_on_all": explain_scores_all,
         "explain_scores_on_success_only": explain_scores_on_success_only,
-        "stats":stats[1]
+        "stats":stats[1],
+        "args":get_args(model,dataset,attack,explainer)
     }
 
     return result
@@ -237,10 +235,10 @@ def run(
 if __name__ == "__main__":
     console.print("Checking Arguments")
     parser = argparse.ArgumentParser()
-    parser.add_argument("dataset", choices=DATASETS.keys())
-    parser.add_argument("model", choices=MODELS)
-    parser.add_argument("attack", choices=ATTACKS)
-    parser.add_argument("explainer", choices=EXPLAINER)
+    parser.add_argument("dataset", nargs="?", choices=DATASETS.keys())
+    parser.add_argument("model", nargs="?", choices=MODELS)
+    parser.add_argument("attack", nargs="?", choices=ATTACKS)
+    parser.add_argument("explainer", nargs="?", choices=EXPLAINER)
     # parser.add_argument("metric", choices=METRICS.keys())
     parser.add_argument(
         "--seed",
@@ -262,51 +260,13 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     if args.smoke_test:
-        # print run smoek test
-        console.print(
-            Panel(
-                Align.center("SMOKE TEST",vertical="middle"),
-                style="bold red",
-                border_style="red",
-                padding=(3,10)
-                )
-            )
-        num_samples = 2
-        console.print(Align.center(f"Over the parameters:  {list(DATASETS.keys())},{['L2']},{MODELS}, {ATTACKS}, {EXPLAINER}"),style="bold red")
-        console.print(Align.center(f"Using only [bold cyan]{num_samples}[/bold cyan] samples."),style="bold red")
-        result_dir = Path(f"./results/smoke_test_{time.time()}")
-        result_dir.mkdir(parents=True, exist_ok=True)
-        for dataset, metric, model, attack, explainer in track(product(DATASETS.keys(),["L2"],MODELS,ATTACKS,EXPLAINER),description="Going through all settings",total=len(DATASETS)*len(METRICS)*len(MODELS)*len(ATTACKS)*len(EXPLAINER), console=console):
-            # print settings
-            p = Panel(f"Current Paramters: {dataset} - {metric} - {model} - {attack} - {explainer}",style="cyan",expand=False)
-            console.print(Align.center(p))
-            # run run
-            result = run(
-                dataset=DATASETS[dataset](),
-                model_name=model, # type: ignore
-                attack_name=attack, # type: ignore 
-                explainer_name=explainer, # type: ignore
-                metric=METRICS["L2"](),
-                seed=42,
-                num_samples=num_samples,
-                train_samples=num_samples
-            )
-            # save results
-            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-            filename = (
-                f"{dataset}__"
-                f"{model}__"
-                f"{explainer}__"
-                f"{attack}__"
-                f"seed{42}__"
-                f"{timestamp}.json"
-            )
-
-            out_path = result_dir / filename
-            with out_path.open("w", encoding="utf-8") as f:
-                json.dump(result, f, indent=2, ensure_ascii=False)
+        # ask user what to include in smoke test
+        ds, mo, ex, at = infer_smoke_test(DATASETS,MODELS,EXPLAINER,ATTACKS)
+        smoke_test(run,ds, METRICS, mo, ex, at)
         exit(0)
     else:
+        if args.dataset is None or args.model is None or args.attack is None or args.explainer is None:
+            raise ValueError("The arguments must be present when not running smoke test")
         console.print(f"[#69db88][RUN][/#69db88]{TC} Starting new run with: [/]", args)
         result = run(
             dataset=DATASETS[args.dataset](),

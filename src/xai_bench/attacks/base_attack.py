@@ -7,6 +7,8 @@ from numbers import Number
 import pandas as pd
 from jaxtyping import Shaped
 from xai_bench.stat_collector import StatCollector
+from rich.progress import Progress, TextColumn,BarColumn,TimeElapsedColumn,TimeRemainingColumn
+from xai_bench.console import console, RUN_TEXT
 
 class BaseAttack(ABC):
     def __init__(self, model: BaseModel, task: Literal["classification","regression"], epsilon:Optional[float], stats, dataset:BaseDataset):
@@ -31,7 +33,13 @@ class BaseAttack(ABC):
         x = np.asarray(x)
         self.stats("generate", x)
         if x.ndim == 2:
-            return np.asarray([self._generate(s) for s in x])
+            with self._get_generate_progress_bar() as progress:
+                task = progress.add_task(f"{RUN_TEXT} Generating Attack", total=len(x))
+                samples = []
+                for s in x:
+                    samples.append(self._generate(s))
+                    progress.update(task,advance=1)
+                return np.asarray(samples)
         else:
             return self._generate(x)
 
@@ -86,3 +94,17 @@ class BaseAttack(ABC):
     def wrap_attack_valid(self, X, X_adv, epsilon:Optional[float]=None):
         _, sums = self.is_attack_valid(X,X_adv,epsilon)
         return np.where(sums,X_adv,X)
+    
+    def _get_generate_progress_bar(self):
+        return Progress(
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(bar_width=40),
+            "[progress.percentage]{task.completed}/{task.total}",
+            "[progress.percentage]({task.percentage:>3.1f}%)",
+            "[bold #ed1cdf]•[/]",
+            TimeElapsedColumn(),
+            "[bold #ed1cdf]/[/]",
+            TimeRemainingColumn(),
+            console=console,
+            transient=True,
+        )

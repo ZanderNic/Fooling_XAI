@@ -110,6 +110,13 @@ python skripts/run_benchmark.py <dataset> <model> <attack> <explainer> <metric> 
 
 After running the command, the benchmark prints progress and saves all results as a JSON file.
 
+## ▶️ Run a Smoketest
+To just check if everything is working run a some test like:
+```bash
+python skripts/run_benchmark.py -s
+```
+When prompted either press `Enter` to select all or only select specific parts that should be included in the smoke test. It then will run all combinations of those and create a report in `results/smoketest`.
+
 ## 🔧 Extending 
 
 This repo is designed to be extended easily:

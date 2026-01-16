@@ -5,12 +5,16 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Type, Callable
+import traceback
+import inspect
 
 # 3-party imports
-import pandas as pd
 import numpy as np
 from rich.progress import track
+from rich.panel import Panel
+from rich.align import Align
+from itertools import product
 
 # projekt imports
 from xai_bench.base import BaseAttack, BaseDataset, BaseExplainer, BaseMetric, BaseModel
@@ -175,14 +179,17 @@ def load_attack(
         attack =  ColumnSwitchAttack(
             model=model,
             task= dataset.task,
+            dataset=dataset,
+            metric=metric,
+            explainer=explainer,
             epsilon=epsilon,
-            dataset=dataset
-            #explainer=explainer,
-            #metric=metric,
+            n_switches=8,
+            max_tries=1000,
+            numerical_only=False
             #random_state=seed,
         )
         
-        attack.fit(dataset=dataset, n_switches=5, max_tries=1000, numerical_only=True)
+        attack.fit()
         return attack
     
     if attack_string == "DataPoisoningAttack":
@@ -269,9 +276,116 @@ def get_attack_success(X:np.ndarray,X_adv:np.ndarray) -> tuple[np.ndarray, int, 
 def calculate_metrics(X_exp:np.ndarray, X_adv_exp:np.ndarray, METRICS:dict)->dict:
     explain_scores: Dict[str, dict] = {}
     for name, MetricCls in track(
-        METRICS.items(), description="Caluclating Explaination scores", transient=True
+        METRICS.items(), description="Caluclating Explaination scores", transient=True,console=console
     ):
         m: BaseMetric = MetricCls()
         s = m.compute(X_exp, X_adv_exp)
         explain_scores[name] = {"mean": float(s.mean()), "std": float(s.std())}
     return explain_scores
+
+
+def infer_smoke_test(datasets:dict[str,Type[BaseDataset]],models:list[str],explainers:list[str],attacks:list[str])->tuple[dict[str,Type[BaseDataset]],list[str],list[str],list[str]]:
+    console.rule("[bold green]Setting smoketest parameters[/]")
+    console.print("")
+    # ask for dataset
+    ds = {k:datasets[k] for k in _ask([*datasets.keys()])}
+    mo = _ask(models)
+    ex = _ask(explainers)
+    at = _ask(attacks)
+
+    return ds, mo, ex, at
+
+def _ask(things:list[str]):
+    response = console.input(f"[green] Out of the following, which should be included? (seperate with ',' or press enter for all):[/]\n[#d7f5d7]{' - '.join(things)}[/]\n")
+    if response=="":
+        return things
+    else:
+        return response.split(",")
+
+
+"""
+Runs a smoke test on all combinations
+"""
+def smoke_test(run_func:Callable, datasets:dict[str,Type[BaseDataset]],metrics:dict[str,Type[BaseMetric]],models:list[str],explainers:list[str],attacks:list[str]):
+    # print run smoek test
+    console.print(
+        Panel(
+            Align.center("SMOKE TEST",vertical="middle"),
+            style="bold red",
+            border_style="red",
+            padding=(3,10)
+            )
+        )
+    num_samples = 2
+    console.print(Align.center(f"Over the parameters:  {list(datasets.keys())},{['L2']},{models}, {attacks}, {explainers}"),style="bold red")
+    console.print(Align.center(f"Using only [bold cyan]{num_samples}[/bold cyan] samples."),style="bold red")
+    result_dir = Path(f"./results/smoke_test_{time.time()}")
+    result_dir.mkdir(parents=True, exist_ok=True)
+    for dataset, metric, model, attack, explainer in track(product(datasets.keys(),["L2"],models,attacks,explainers),description="Going through all settings",total=len(datasets)*len(models)*len(attacks)*len(explainers), console=console):
+        try:
+            # print settings
+            p = Panel(f"Current Paramters: {dataset} - {metric} - {model} - {attack} - {explainer}",style="cyan",expand=False)
+            console.print(Align.center(p))
+            # run run
+            result = run_func(
+                dataset=datasets[dataset](),
+                model_name=model, # type: ignore
+                attack_name=attack, # type: ignore 
+                explainer_name=explainer, # type: ignore
+                metric=metrics["L2"](),
+                seed=42,
+                num_samples=num_samples,
+                train_samples=num_samples
+            )
+            # save results
+            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+            filename = (
+                f"{dataset}__"
+                f"{model}__"
+                f"{explainer}__"
+                f"{attack}__"
+                f"seed{42}__"
+                f"{timestamp}.json"
+            )
+
+            out_path = result_dir / filename
+            with out_path.open("w", encoding="utf-8") as f:
+                json.dump(result, f, indent=2, ensure_ascii=False)
+        except Exception:
+            error_file = result_dir / (f"error_{time.time_ns()}.txt")
+            console.print(Panel(f"[bold red]An error occured![/]\n\nFor further inforamtion look see [lightgray italic]{error_file}[/]",style="bold red"))
+            with error_file.open("w") as f:
+                f.write(traceback.format_exc()+"\n\n"+f"Current Paramters: {dataset} - {metric} - {model} - {attack} - {explainer}")
+
+
+def _json_safe(value):
+    try:
+        json.dumps(value)
+        return value
+    except (TypeError, OverflowError):
+        return str(value)
+    
+def get_args(*objects):
+    result = {}
+
+    for obj in objects:
+        cls = obj.__class__
+        name = cls.__name__
+
+        sig = inspect.signature(cls.__init__)
+        params = list(sig.parameters.values())[1:]  # skip self
+
+        init_args = {}
+        for p in params:
+            if hasattr(obj, p.name):
+                value = getattr(obj, p.name)
+            elif p.default is not inspect._empty:
+                value = p.default
+            else:
+                value = None
+
+            init_args[p.name] = _json_safe(value)
+
+        result[name] = init_args
+
+    return result
