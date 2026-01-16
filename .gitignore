@@ -210,7 +210,9 @@ __marimo__/
 # Datasets
 *.csv
 
-# Used Datasets
+
+
+# Used Datasets #
 
 # Give me some credit
 !cs-training_clean.csv
@@ -219,12 +221,14 @@ __marimo__/
 !heart.csv
 !heart_failure_.csv
 
-
 # Prisoners
 !compas_recidivism_racial_bias
 
 # Housing Price Regression
 !housing.csv
+
+# Fores Dataset
+!covtype_forest.csv
 
 # macos
 *.DS_Store

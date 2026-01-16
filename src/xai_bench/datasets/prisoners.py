@@ -8,6 +8,7 @@ class PrisoneresDataset(BaseDataset):
         self.numerical_features = ['age', 'sex', 'decile_score', 'priors_count', 'days_in_jail', 'c_days_from_compas', 'is_violent_recid', 'v_decile_score']
         self.target = "is_recid"
         self.task = "classification"
+        
         super().__init__(path, **kwargs)
 
     def read(self) -> pd.DataFrame:
@@ -34,9 +35,6 @@ class PrisoneresDataset(BaseDataset):
 
 if __name__ == "__main__":
     path = "src/xai_bench/datasets/compas_recidivism_racial_bias.csv"
-
-
-    df = pd.read_csv(path)
 
     dataset = PrisoneresDataset(path)
 
