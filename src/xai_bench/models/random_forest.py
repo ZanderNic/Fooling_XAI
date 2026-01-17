@@ -73,7 +73,11 @@ class SKRandomForest(BaseModel):
         Xn = _to_numpy(X)
         yn = _check_1d_vector(y)
         
-        self.model = RandomForestClassifier(**self._rf_kwargs)
+        if self.task == "classification":
+            self.model = RandomForestClassifier(**self._rf_kwargs)
+        else:  # regression
+            self.model = RandomForestRegressor(**self._rf_kwargs)
+
         self.model.fit(Xn, yn)
         
         return self
