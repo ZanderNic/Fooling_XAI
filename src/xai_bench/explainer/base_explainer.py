@@ -1,6 +1,6 @@
 # std lib imports
 from __future__ import annotations
-from typing import Any, Callable, Literal, Optional
+from typing import Literal, Optional
 from dataclasses import dataclass
 
 # 3-party imports 
@@ -100,7 +100,7 @@ class BaseExplainer:
     def explain(
         self, 
         X: np.ndarray,
-        num_samples: int = None
+        num_samples: Optional[int] = None
     ) -> np.ndarray:
         """
             Generate a local explanation for a single input sample.

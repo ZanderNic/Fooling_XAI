@@ -17,7 +17,7 @@ import argparse
 import json
 from dataclasses import asdict
 from datetime import datetime, timezone
-from typing import Dict, Literal, Optional
+from typing import Literal, Optional
 
 # 3-party imports
 import numpy as np

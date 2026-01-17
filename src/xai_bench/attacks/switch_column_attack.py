@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
-from typing import Optional, Literal, Union, Any, overload
-from itertools import permutations
+from typing import Optional, Literal, overload
 import math
 
 from xai_bench.base import BaseModel, BaseDataset, BaseAttack, BaseMetric,BaseExplainer
@@ -12,7 +11,7 @@ from rich.progress import (
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
-from xai_bench.console import console, RUN_TEXT
+from xai_bench.console import console
 
 class ColumnSwitchAttack(BaseAttack):
     def __init__(
