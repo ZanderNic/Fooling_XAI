@@ -1,11 +1,11 @@
 import pandas as pd
 from xai_bench.datasets.base_dataset import BaseDataset
 from pathlib import Path
-from typing import Union
+from typing import Optional
 
 
 class PrisoneresDataset(BaseDataset):
-    def __init__(self, path: Union[str, Path] = None, **kwargs):
+    def __init__(self, path: Optional[str]=None, **kwargs):
         self.categorical_features = ['race']
         self.numerical_features = ['age', 'sex', 'decile_score', 'priors_count', 'days_in_jail', 'c_days_from_compas', 'is_violent_recid', 'v_decile_score']
         self.target = "is_recid"
