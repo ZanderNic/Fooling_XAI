@@ -12,7 +12,7 @@ from rich.progress import (
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
-from xai_bench.console import console
+from xai_bench.console import console, RUN_TEXT
 
 class ColumnSwitchAttack(BaseAttack):
     def __init__(
@@ -26,6 +26,7 @@ class ColumnSwitchAttack(BaseAttack):
         n_switches: int = 3,
         max_tries: int = 1000,
         numerical_only: bool = True,
+        explain_ratio:float=0.1
     ):
         super().__init__(
             model,
@@ -50,6 +51,7 @@ class ColumnSwitchAttack(BaseAttack):
         self.numerical_only = numerical_only
         self.metric = metric
         self.explainer = explainer
+        self.explain_ratio = explain_ratio # how much to decrese explain samples for faster results
 
         if numerical_only:
             self.feature_indexes = [
@@ -67,58 +69,42 @@ class ColumnSwitchAttack(BaseAttack):
     def fit(self):
         pass
 
+    def _set_max_tries(self):
+        if self.max_tries is None:
+            self.max_tries = int(math.factorial(len(self.feature_indexes)) / math.factorial(len(self.feature_indexes) - self.n_switches))
+
+    # nd array of dim (feature,)
     def _generate(self, x:np.ndarray) -> np.ndarray:
         with self._get_progress_bar() as progress:
+            # if no given take all
+            self._set_max_tries()
             task = progress.add_task(
                         "[bold #ed1cdf][CSA][/] [#f7c8f3] Generating One Sample...",
-                        total=math.factorial(len(self.feature_indexes))
-                        / math.factorial(len(self.feature_indexes) - self.n_switches) if self.max_tries is None else self.max_tries,
+                        total=self.max_tries,
                         combi="",
                     )
             
             best_attack = {"score":0, "combi":None}
-            if self.max_tries is None:
-                for combi in permutations(self.feature_indexes,self.n_switches):
-                    combi = list(combi)
-                    x_tmp = self._switch_columns(x, combi)
-                    b, _ = self.is_attack_valid(np.expand_dims(x,axis=0),np.expand_dims(x_tmp,axis=0))
-                    if not b:
-                        # attack is not valid, so dont even evaluate metrics
-                        progress.update(task, advance=1)
-                        continue
-                    # get explainations:
-                    x_exp, x_tmp_exp = self.explainer.explain(np.expand_dims(x,axis=0)), self.explainer.explain(np.expand_dims(x_tmp,axis=0))
-                    # evalute based on given emtric
-                    score = self.metric.compute(x_exp,x_tmp_exp)
-                    if score>best_attack["score"]:
-                        best_attack["combi"] = combi
-                        best_attack["score"] = score
-                        progress.update(task, advance=1,combi=combi)
-                        continue
+            for _ in range(self.max_tries):
+                combi = np.random.choice(
+                            self.feature_indexes, size=(self.n_switches,), replace=False
+                        ).tolist()
+                x_tmp = self._switch_columns(x, combi)
+                b, _ = self.is_attack_valid(np.expand_dims(x,axis=0),np.expand_dims(x_tmp,axis=0))
+                if not b:
+                    # attack is not valid, so dont even evaluate metrics
                     progress.update(task, advance=1)
-            else:
-                for _ in range(self.max_tries):
-                    combi = np.random.choice(
-                                self.feature_indexes, size=(self.n_switches,), replace=False
-                            ).tolist()
-                    x_tmp = self._switch_columns(x, combi)
-                    b, _ = self.is_attack_valid(np.expand_dims(x,axis=0),np.expand_dims(x_tmp,axis=0))
-                    if not b:
-                        # attack is not valid, so dont even evaluate metrics
-                        progress.update(task, advance=1)
-                        continue
-                    # get explainations:
-                    x_exp, x_tmp_exp = self.explainer.explain(np.expand_dims(x,axis=0)), self.explainer.explain(np.expand_dims(x_tmp,axis=0))
-                    # evalute based on given emtric
-                    score = self.metric.compute(x_exp,x_tmp_exp)
-                    if score>best_attack["score"]:
-                        best_attack["combi"] = combi
-                        best_attack["score"] = score
-                        progress.update(task, advance=1,combi=combi)
-                        continue
-                    progress.update(task, advance=1)
-
-
+                    continue
+                # get explainations:
+                x_exp, x_tmp_exp = self.explainer.explain(np.expand_dims(x,axis=0),int(self.explainer.num_samples/10)), self.explainer.explain(np.expand_dims(x_tmp,axis=0),int(self.explainer.num_samples/10))
+                # evalute based on given emtric
+                score = self.metric.compute(x_exp,x_tmp_exp)
+                if score>best_attack["score"]:
+                    best_attack["combi"] = combi
+                    best_attack["score"] = score
+                    progress.update(task, advance=1,combi=combi)
+                    continue
+                progress.update(task, advance=1)
         # return attack
         if best_attack["combi"] is None:
             # no valid attack was found
@@ -126,8 +112,43 @@ class ColumnSwitchAttack(BaseAttack):
             return x
         else:
             return self._switch_columns(x,best_attack["combi"])
+        
+    # arrayo f dim (n,feature)
+    def _generate_multiple(self, X:np.ndarray)->np.ndarray:
+        with self._get_progress_bar(single=False) as progress:
+            self._set_max_tries()
+            task = progress.add_task(
+                        f"[bold #ed1cdf][CSA][/] [#f7c8f3] Generating All {len(X)} Samples...",
+                        total=self.max_tries,
+                        combi="",
+                    )
+            best_scores = np.zeros((len(X)))
+            best_combis = [None for _ in range(len(X))]
+            for _ in range(self.max_tries):
+                combis = np.stack([np.random.choice(
+                            self.feature_indexes, size=(self.n_switches,), replace=False
+                        ) for _ in range(len(X))])
+                X_tmp = np.stack([self._switch_columns(x, combi.tolist()) for x,combi in zip(X,combis)])
+                Bs, _ = self.is_attack_valid(X,X_tmp)
+                X_exp, X_tmp_exp = self.explainer.explain(X,int(self.explainer.num_samples/10)), self.explainer.explain(X_tmp,int(self.explainer.num_samples/10))
+                scores = self.metric.compute(X_exp,X_tmp_exp)
+                save_mask = Bs & (scores>best_scores)
+                best_combis = [combi if b else best for b, combi, best in zip(save_mask,combis,best_combis)]
+                progress.update(task, advance=1,combis=int(save_mask.sum()))
 
-    def _get_progress_bar(self):
+        return np.stack([self._switch_columns(x, combi) if combi is not None else x for x,combi in zip(X,best_combis)])
+
+
+
+    def generate(self, x: np.ndarray) -> np.ndarray:
+        x = np.asarray(x)
+        self.stats("generate", x)
+        if x.ndim == 2:
+            return self._generate_multiple(x)
+        else:
+            return self._generate(x)
+
+    def _get_progress_bar(self,single:bool=True):
         return Progress(
             TextColumn("[progress.description]{task.description}"),
             BarColumn(bar_width=40),
@@ -138,7 +159,7 @@ class ColumnSwitchAttack(BaseAttack):
             "[bold #ed1cdf]/[/]",
             TimeRemainingColumn(),
             "[bold #ed1cdf]•[/]",
-            TextColumn("[red]Top Combi: {task.fields[combi]}"),
+            TextColumn("[red]Top Combi: {task.fields[combi]}") if single else TextColumn("[red]# of better combis: {task.fields[combi]}"),
             console=console,
             transient=True,
         )

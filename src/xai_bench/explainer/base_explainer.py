@@ -57,6 +57,7 @@ class BaseExplainer:
     """
     def __init__(self,stats:tuple):
         self.stats = StatCollector(stats[0],comment=stats[1])
+        self.num_samples = 0
 
     def fit(
         self, 
@@ -98,7 +99,8 @@ class BaseExplainer:
 
     def explain(
         self, 
-        X: np.ndarray
+        X: np.ndarray,
+        num_samples: int = None
     ) -> np.ndarray:
         """
             Generate a local explanation for a single input sample.
