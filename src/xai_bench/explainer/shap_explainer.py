@@ -57,7 +57,7 @@ class ShapAdapter(BaseExplainer):
 
         # set up a shap expalainer with the background data and model prediction function
         if self.model.task == "classification":
-            def model_pred(X):
+            def model_pred(X): # type: ignore
                 prediction_probs = model.predict_proba(np.asarray(X, dtype=float))
                 return prediction_probs.max(axis=1)
         else:  # regression
@@ -70,7 +70,7 @@ class ShapAdapter(BaseExplainer):
     def explain(
         self, 
         X: np.ndarray,
-        num_samples: int = None
+        num_samples: Optional[int] = None
     ) -> np.ndarray:
         """
         Compute a SHAP explanation and aggregate it according to the dataset's feature mapping.
@@ -90,6 +90,7 @@ class ShapAdapter(BaseExplainer):
         self.stats("explain",X)
 
         # produce explanations
+        assert self._explainer is not None, "Has to have explainer"
         shap_values = self._explainer.shap_values(
             X,
             nsamples=self.num_samples if num_samples is None else num_samples,
@@ -99,6 +100,7 @@ class ShapAdapter(BaseExplainer):
         shap_values = np.asarray(shap_values)
 
         # construct explanation object for compatibility with the dataset method
+        assert self.features is not None, "Has to have features"
         explanation_object = Explanation(
             values=shap_values,
             feature_names=self.features.feature_names_model
@@ -118,12 +120,12 @@ class ShapAdapter(BaseExplainer):
         """
         # Each thread will store its own KernelExplainer to avoid shared-state issues
         local = threading.local()
-
         def get_explainer():
             if getattr(local, 'explainer', None) is None:
                 if self._background is None or self.model is None:
                     raise RuntimeError('ShapAdapter must be fitted before creating thread-local explainers')
                 def model_pred(X):
+                    assert self.model is not None," Has to have model"
                     if self.model.task == 'classification':
                         probs = self.model.predict_proba(np.asarray(X, dtype=float))
                         return probs.max(axis=1)
@@ -194,6 +196,7 @@ class ShapAdapter(BaseExplainer):
             )
             shap_vals = np.asarray(shap_vals)
             # use dataset helper to convert to final array format
+            assert self.features is not None, "Has to have fefatues"
             explanation_obj = Explanation(
                 values=shap_vals,
                 feature_names=self.features.feature_names_model

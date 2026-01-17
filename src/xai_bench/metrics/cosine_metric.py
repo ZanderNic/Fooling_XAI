@@ -1,5 +1,4 @@
 import numpy as np
-from numpy.linalg import norm
 
 from xai_bench.metrics.base_metric import BaseMetric
 from xai_bench.metrics.explanation_normalizer import ExplanationNormalizer
