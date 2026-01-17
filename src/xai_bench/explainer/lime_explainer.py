@@ -143,42 +143,73 @@ class LimeTabularAdapter(BaseExplainer):
                 If the explainer has not been initialized via `fit()`.
         """
         assert self._lime is not None, "Call fit() first."
-        assert 1 <= X.ndim <= 2, "Input X must be 1D or 2D array."
-        self.stats("explain", X.shape[0] if X.ndim==2 else 1)
-        
+        self.stats("explain", X.shape[0] if X.ndim == 2 else 1)
+
+        # make sure X is 2D
+        X = np.asarray(X, dtype=float)
         if X.ndim == 1:
             X = X.reshape(1, -1)
-        model_prediction = self.model.predict(X)
 
         if self.model.task == "classification":
+            # compute proba once to infer K and predicted class index
+            proba = self._predict_proba_lime(X)
+
+
+            # binary safety: (n,) or (n,1) -> (n,2)
+            if proba.ndim == 1:
+                proba = np.column_stack([1 - proba, proba])
+            elif proba.shape[1] == 1:
+                p = proba[:, 0]
+                proba = np.column_stack([1 - p, p])
+
+            K = proba.shape[1]
+            lime_labels = list(range(K))              # indices 0..K-1
+            pred_idx = np.argmax(proba, axis=1)       # predicted class index per sample
+
             exps = [self._lime.explain_instance(
                 data_row=x,
-                predict_fn=self.model.predict_proba,
-                labels=self.dataset.classes,
+                predict_fn=self._predict_proba_lime,
+                labels=lime_labels,                    # changed
                 num_features=x.shape[0],
-                num_samples= self.num_samples if num_samples is None else num_samples
+                num_samples=self.num_samples if num_samples is None else num_samples
             ) for x in X]
+
         else:  # regression
             exps = [self._lime.explain_instance(
                 data_row=x,
                 predict_fn=self.model.predict_scalar,
                 num_features=x.shape[0],
-                num_samples= self.num_samples if num_samples is None else num_samples
+                num_samples=self.num_samples if num_samples is None else num_samples
             ) for x in X]
 
         exp_values = []
         for i, exp in enumerate(exps):
-            # model_prediction is ignored by LIME in case of regression task
-            exp_values.append(list(dict(exp.as_list(model_prediction[i])).values()))
+            if self.model.task == "classification":
+                exp_values.append(list(dict(exp.as_list(label=int(pred_idx[i]))).values()))
+            else:
+                exp_values.append(list(dict(exp.as_list()).values()))
+
         exp_values = np.array(exp_values)
 
-        # construct explanation object for compatibility with the dataset method
         explanation_object = Explanation(
             values=exp_values,
             feature_names=self.features.feature_names_model
         )
-
         return self.dataset.explanation_to_array(explanation_object)
+
+
+    def _predict_proba_lime(self, X: np.ndarray) -> np.ndarray:
+        proba = np.asarray(self.model.predict_proba(X))
+
+        # binary safety: (n,) or (n,1) -> (n,2)
+        if proba.ndim == 1:
+            proba = np.column_stack([1 - proba, proba])
+        elif proba.shape[1] == 1:
+            p = proba[:, 0]
+            proba = np.column_stack([1 - p, p])
+
+        return proba
+
 
 
     def _create_thread_local_explainer(self):
@@ -259,38 +290,47 @@ class LimeTabularAdapter(BaseExplainer):
         get_explainer = self._create_thread_local_explainer()
 
         def _explain_batch(batch: np.ndarray) -> np.ndarray:
-            model_prediction = self.model.predict(X)
             expl = get_explainer()
 
-            # call the thread-local LIME explainer directly to avoid adapter-level shared state
             if self.model.task == "classification":
+                proba = self._predict_proba_lime(batch)   
+                K = proba.shape[1]
+                lime_labels = list(range(K))
+                pred_idx = np.argmax(proba, axis=1)
+
                 exps = [expl.explain_instance(
                     data_row=x,
-                    predict_fn=self.model.predict_proba,
-                    labels=self.dataset.classes,
+                    predict_fn=self._predict_proba_lime,  
+                    labels=lime_labels,
                     num_features=x.shape[0],
-                    num_samples= self.num_samples if num_samples is None else num_samples
+                    num_samples=self.num_samples if num_samples is None else num_samples
                 ) for x in batch]
+
+                exp_values = []
+                for i, exp in enumerate(exps):
+                    exp_values.append(list(dict(exp.as_list(label=int(pred_idx[i]))).values()))
+                exp_values = np.array(exp_values)
+
             else:  # regression
+                model_prediction = self.model.predict(batch)
                 exps = [expl.explain_instance(
                     data_row=x,
                     predict_fn=self.model.predict_scalar,
                     num_features=x.shape[0],
-                    num_samples= self.num_samples if num_samples is None else num_samples
+                    num_samples=self.num_samples if num_samples is None else num_samples
                 ) for x in batch]
 
-            exp_values = []
-            for i, exp in enumerate(exps):
-                # model_prediction is ignored by LIME in case of regression task
-                exp_values.append(list(dict(exp.as_list(model_prediction[i])).values()))
-            exp_values = np.array(exp_values)
+                exp_values = []
+                for i, exp in enumerate(exps):
+                    exp_values.append(list(dict(exp.as_list()).values()))
+                exp_values = np.array(exp_values)
 
-            # use dataset helper to convert to final array format
             explanation_obj = Explanation(
                 values=exp_values,
                 feature_names=self.features.feature_names_model
             )
             return self.dataset.explanation_to_array(explanation_obj)
+
 
         results = []
         with ThreadPoolExecutor(max_workers=n_workers) as ex:

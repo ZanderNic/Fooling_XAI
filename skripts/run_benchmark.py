@@ -87,7 +87,8 @@ def run(
     seed: int,
     num_samples: int = 1000,
     epsilon: float = 0.05,
-    train_samples: Optional[int]=None
+    train_samples: Optional[int]=None,
+    smoke_test:bool=False
 ):
     """ """
 
@@ -98,12 +99,12 @@ def run(
         dataset.X_train_scaled = dataset.X_train_scaled[:train_samples] # type: ignore
         dataset.y_test = dataset.y_test[:train_samples] # type: ignore
         dataset.y_train = dataset.y_train[:train_samples] # type: ignore
-
     # load model
     with console.status(f"{TC} Loading model: {model_name}", spinner="shark"):
-        model = load_model(model_name, dataset, seed)
+        model = load_model(model_name, dataset, seed,smoke_test=smoke_test)
     console.print(f"{RUN_TEXT} Loaded model: ", model_name)
 
+    StatCollector.change_context("fitting_model",model)
     # fit model
     assert dataset.X_train_scaled is not None and dataset.y_train is not None, (
         "Something went wrong with the dataset"
@@ -112,6 +113,7 @@ def run(
         model.fit(dataset.X_train_scaled.values, dataset.y_train.values)
     console.print(f"{RUN_TEXT} Fitted Model ")
 
+    StatCollector.change_context("scoring_model",model)
     # predict on test and calucalte accuracy
     assert dataset.y_test is not None and dataset.X_test_scaled is not None, (
         "Something went wrong with the dataset"
@@ -127,6 +129,7 @@ def run(
         explainer = load_explainer(explainer_name, dataset, seed)
     console.print(f"{RUN_TEXT} Loaded Explainer")
 
+    StatCollector.change_context("fit_explainer",model,explainer)
     # fit explainer
     assert dataset.features is not None, "Something went wrong with the dataset"
     with console.status(f"{TC} Fitting explainer", spinner="shark"):
@@ -135,6 +138,7 @@ def run(
         )
     console.print(f"{RUN_TEXT} Fitted Explainer")
 
+    StatCollector.change_context("load_attack",model,explainer)
     # get attack
     with console.status(f"{TC} Loading attack", spinner="shark"):
         attack, t_attack_fit = timed_call(
@@ -145,7 +149,8 @@ def run(
             explainer=explainer,
             metric=metric,
             seed=seed,
-            epsilon=epsilon
+            epsilon=epsilon,
+            smoke_test=smoke_test
         )
     console.print(f"{RUN_TEXT} Loaded Attack")
 
@@ -160,17 +165,19 @@ def run(
         X_test = dataset.X_test_scaled.iloc[sample_indices].values
         y_test = dataset.y_test.iloc[sample_indices].values
 
-
+    StatCollector.change_context("generate_attack",model,explainer,attack)
     with console.status(f"{TC} Generate attack", spinner="shark"):
         X_adv, t_generate = timed_call(attack.generate, X_test)
     console.print(f"{RUN_TEXT} Generated Attack")
 
+    StatCollector.change_context("calc_attack_acc",model,explainer,attack)
     with console.status(f"{TC} Calculating attack accuracy  ", spinner="shark"):
         predict_accuracy  = model.score(
             X_adv, y_test
         )
     console.print(f"{RUN_TEXT} Calculated attack accuracy")
 
+    StatCollector.change_context("calc_attack_fid",model,explainer,attack)
     with console.status(f"{TC} Calculating model fidelity after attack  ", spinner="shark"):
         model_attack_fidelity  = model.score(
             X_adv, model.predict(X_test)
@@ -178,13 +185,16 @@ def run(
     console.print(f"{RUN_TEXT} Calculated model attack fidelity")
 
     # generate explanation for real dataset X_test and X_adv
+    StatCollector.change_context("exp_real_x",model,explainer,attack)
     with console.status(f"{TC} Explaining real X", spinner="shark"):
         x_real_exp = explainer.explain(X_test)
 
+    StatCollector.change_context("exp_adv_x",model,explainer,attack)
     with console.status(f"{TC} Explaining adversarial X", spinner="shark"):
         x_adv_exp = explainer.explain(X_adv)
     console.print(f"{RUN_TEXT} All X explained")
 
+    StatCollector.change_context("only_metrics",model,explainer,attack)
     # get attack success
     mask, succ_count, succ_rate = get_attack_success(X_test, X_adv)
 
@@ -228,7 +238,7 @@ def run(
         "stats":stats[1],
         "args":get_args(model,dataset,attack,explainer)
     }
-
+    del model, dataset, explainer, attack
     return result
 
 
