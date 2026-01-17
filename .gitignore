@@ -226,6 +226,7 @@ __marimo__/
 
 # Housing Price Regression
 !housing.csv
+!housing_small.csv
 
 # Fores Dataset
 !covtype_forest.csv
