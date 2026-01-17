@@ -183,9 +183,9 @@ def load_attack(
             metric=metric,
             explainer=explainer,
             epsilon=epsilon,
-            n_switches=8,
-            max_tries=1000,
-            numerical_only=False
+            n_switches=int(len(dataset.numerical_features)*0.5),
+            max_tries=500,
+            numerical_only=True
             #random_state=seed,
         )
         
