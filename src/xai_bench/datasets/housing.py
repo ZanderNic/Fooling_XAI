@@ -4,18 +4,17 @@ from pathlib import Path
 import kagglehub
 
 from xai_bench.datasets.base_dataset import BaseDataset
+from sklearn.preprocessing import StandardScaler
 
 
 class HousingDataset(BaseDataset):
     def __init__(self, path: Union[str, Path] = None, **kwargs):   
         self.categorical_features = [ "waterfront", 'view']
-        self.numerical_features = [
-            'bedrooms', 'bathrooms', 'sqft_living','sqft_lot', 'floors', 'condition', 'grade', 'sqft_above', 'sqft_basement', 'yr_built', 'yr_renovated', 'zipcode', 'lat', 'long', 'sqft_living15', 'sqft_lot15']
+        self.numerical_features = ['bedrooms', 'bathrooms', 'sqft_living','sqft_lot', 'floors', 'condition', 'grade', 'sqft_above', 'sqft_basement', 'yr_built', 'yr_renovated', 'zipcode', 'lat', 'long', 'sqft_living15', 'sqft_lot15']
         self.target = "price"
         self.task = "regression"
         
-        path = str(path) if path is not None else f"{Path(__file__).parent}/heart_dataset.csv" # "src/xai_bench/datasets/heart.csv"
-    
+        path = str(path) if path is not None else f"{Path(__file__).parent}/housing.csv"     
         super().__init__(path, task=self.task, **kwargs)
 
 
@@ -32,6 +31,14 @@ class HousingDataset(BaseDataset):
         df = self.df_raw.copy()
 
         self.y_full = df[self.target]
+        self.y_full = self._scale_target(self.y_full) # scaling target variable
+        self.y_range = {
+            "min": self.y_full.min(),
+            "max": self.y_full.max()
+        }
+
+        # inverse transform -> self.scaler_y.inverse_transofrm
+
         X = df.drop(columns=[self.target])
         X = X.astype(float)
 
@@ -56,25 +63,29 @@ class HousingDataset(BaseDataset):
         df = df.drop(columns=["year", "date", "month"])
         return df
     
+    def _scale_target(self, y: pd.Series) -> pd.Series:
+        self.scaler_y = StandardScaler()
+        y_scaled = self.scaler_y.fit_transform(
+            y.to_numpy().reshape(-1, 1)
+        )
+        return pd.Series(y_scaled.flatten(), index=y.index)
+
+
+    
 
 
 if __name__ == "__main__":
     import os
 
-    #path = os.path.join("datasets", "heart.csv")
     path = "src/xai_bench/datasets/housing.csv"
 
-    df = pd.read_csv(path)
-    print(df)
+    dataset = HousingDataset(path)
 
-    # dataset = HousingDataset(path)
+    print("Raw data shape:", dataset.df_raw.values.shape)
+    print("X_train shape:", dataset.X_train.shape)
+    print("X_test shape:", dataset.X_test.shape)
 
-
-    # print("Raw data shape:", dataset.df_raw.values.shape)
-    # print("X_train shape:", dataset.X_train.shape)
-    # print("X_test shape:", dataset.X_test.shape)
-
-    # print("Orignial columns:", dataset.df_raw.columns)
-    # print("Column mapping:", dataset.feature_mapping)
+    print("Orignial columns:", dataset.df_raw.columns)
+    print("Column mapping:", dataset.feature_mapping)
 
     

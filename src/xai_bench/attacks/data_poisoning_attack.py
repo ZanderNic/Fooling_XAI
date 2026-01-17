@@ -3,6 +3,8 @@ import pandas as pd
 from scipy.stats import kendalltau, norm
 import copy
 import time
+import os
+from pathlib import Path
 
 import json
 from datetime import datetime, timezone
@@ -123,16 +125,15 @@ def manipulation_loss(
     assert len(weights) == 2
     assert all(isinstance(w, (int, float)) and 0 <= w for w in weights)
 
-    # produce distance metrics in [0, infinity)
-    explanation_distance = distance_fn(
-        explanation_importance_values[0],
-        explanation_importance_values[1]
-    )
+    def normalize(x):
+        s = np.sum(np.abs(x), axis=-1, keepdims=True)
+        return x / s if np.all(s > 0) else x
 
-    # transform the distance to a [0, 1] range
-    # with the assumption distance -> infinity => loss -> 1
-    distance_transform = lambda x: 1 / (-x - 1) + 1
-    explanation_distance = distance_transform(explanation_distance)
+    # produce distance metric in [0, 1]
+    explanation_distance = distance_fn(
+        normalize(explanation_importance_values[0]),
+        normalize(explanation_importance_values[1])
+    )
 
     # produce order ranking distance in [0, 1]
     order_ranking_distance = order_ranking_fn(
@@ -476,8 +477,8 @@ def population_fitness(
             A population of individuals represented as a list of samples of Individual objects where
             each sample share the same underlying standard deviation for mutating the individuals' data.
 
-        explainer (shap.Explainer):
-            A SHAP explainer object that can compute SHAP values for instances.
+        explainer (BaseExplainer):
+            An explainer object that can compute feature importance values for instances.
 
         reference_explanations (np.ndarray):
             A 2D numpy array of shape (n_datapoints, n_features) containing the reference explanation
@@ -533,8 +534,10 @@ def population_fitness(
     section_time = time.time()  # LOGGING
 
     # produce SHAP explanations for the entire population
-    explanations = explainer.explain(
-        pop
+    explanations = explainer.explain_parallel(
+        pop,
+        n_workers=os.cpu_count(),
+        batch_size=48
     )
 
     print(f"\tProducing explanations took {time.time() - section_time} seconds.")
@@ -580,7 +583,6 @@ def population_fitness(
         valid_mask = prediction_mask,
         threshold = drift_threshold
     )
-
     print(f"\tEstimated probabilities:\n{estimated_probabilities}")
 
     print(f"\tCalculating estimated probs took {time.time() - section_time} seconds.")
@@ -592,8 +594,9 @@ def population_fitness(
         sample_size = valid_scores_amount,
         confidence=0.95
     )
-    mean_probability = lcb.mean()
+    print(f"\tLCB values:\n{lcb}")
 
+    mean_probability = lcb.mean()
     print(f"\tLCB mean: {mean_probability}")
 
     print(f"\tCalculating LCB took {time.time() - section_time} seconds.")
@@ -949,6 +952,8 @@ def produce_next_generation(
     assert 0 < elite_prop < 1
     assert isinstance(p_combine, float)
     assert 0 <= p_combine <= 1
+    assert isinstance(X_data, np.ndarray)
+    assert X_data.ndim == 2
     assert isinstance(X_min, np.ndarray)
     assert X_min.ndim == 1
     assert X_min.shape[0] == current_population[0][0].data.shape[1]
@@ -1073,8 +1078,9 @@ class EarlyStopping:
         self.confidence = confidence
         self.counter = 0
         self.fitnesses: list[float] = []
-        self.best_fitness = None
-        self.best_stds = None
+        self.best_fitness = np.inf
+        self.best_stds = np.empty(0)
+        self.mean_probability = -1.0
 
     def update(
         self,
@@ -1170,8 +1176,8 @@ def evolve_population(
         initial_population (list[Individual]):
             A list of Individual objects representing the initial population.
 
-        explainer (shap.Explainer):
-            A SHAP explainer object that can compute SHAP values for instances built with the
+        explainer (BaseExplainer):
+            An explainer object that can compute feature importance values for instances built with the
             model and initial data to be evaluated.
 
         reference_explanations (np.ndarray):
@@ -1432,8 +1438,7 @@ class DataPoisoningAttack(BaseAttack):
             epsilon (float):
                 A float value representing the maximum allowed perturbation for each feature.
         """
-        super().__init__(model, task, epsilon, stats=[self,"DataPoisoningAttack"])
-        self.dataset = dataset
+        super().__init__(model, task, epsilon, stats=[self,"DataPoisoningAttack"],dataset=dataset)
         self.explainer = explainer
 
         self.rng = np.random.default_rng(seed=random_state)
@@ -1451,6 +1456,7 @@ class DataPoisoningAttack(BaseAttack):
         DRIFT_CONFIDENCE: float = 0.95,
         EARLY_STOPPING_PATIENCE: int = 10,
         EXPLAINER_NUM_SAMPLES: int = 100,
+        EVOLUTION_DATA_NUM_SAMPLES: int = 200,
     ):
         """
         Fits the data poisoning attack by using an evolutionary algorithm to find optimal
@@ -1518,8 +1524,15 @@ class DataPoisoningAttack(BaseAttack):
                 distribution and an increased estimated probability of the explanation drift 
                 constraint above the desired confidence level.
 
-            random_state (int):
-                An integer representing the random seed for reproducibility.
+            EXPLAINER_NUM_SAMPLES (int):
+                An integer representing the number of samples to use for the explainer during
+                the explanation process.
+
+            EVOLUTION_DATA_NUM_SAMPLES (int):
+                An integer representing the number of data samples to use from the dataset's
+                test data during the evolution process to evaluate the individuals in the population.
+                This can be used to speed up the fitting process on large datasets by using a
+                smaller subset of the data for the evolution.
         """
         assert isinstance(N_GEN, int) and N_GEN > 0
         assert isinstance(N_POP, int) and N_POP > 0
@@ -1539,13 +1552,26 @@ class DataPoisoningAttack(BaseAttack):
         self.explainer.num_samples = EXPLAINER_NUM_SAMPLES
         
         # determine feature bounds and categorical feature information
-        self.X_min, self.X_max = np.array(list(self.dataset.feature_ranges.values())).T
+        self.X_min, self.X_max = np.array(list(self.dataset.scaled_feature_ranges.values())).T
         cat_mask = self.dataset.categorical_feature_mask
         self.X_cat = list(self.dataset.scaled_categorical_values.values())
 
+        if EVOLUTION_DATA_NUM_SAMPLES < self.dataset.X_test_scaled.shape[0]:
+            # sample a subset of the test data for faster evolution
+            sampled_indices = self.rng.choice(
+                self.dataset.X_test_scaled.shape[0],
+                size=EVOLUTION_DATA_NUM_SAMPLES,
+                replace=False
+            )
+            X_data = self.dataset.X_test_scaled.iloc[sampled_indices].values
+            y_data = self.dataset.y_test.iloc[sampled_indices].values
+        else:
+            X_data = self.dataset.X_test_scaled.values
+            y_data = self.dataset.y_test.values
+
         # populate an initial population of std individuals
         initial_population = init_population(
-            reference_data=self.dataset.X_test_scaled.values,
+            reference_data=X_data,
             cat_mask=cat_mask,
             population_size=N_POP,
             mutation_rate=INIT_MUTATION_RATE,
@@ -1555,9 +1581,13 @@ class DataPoisoningAttack(BaseAttack):
         )
 
         # compute the reference explanation to compare the drift against
-        reference_explanations = self.explainer.explain(
-            self.dataset.X_test_scaled.values
-        )
+        reference_explanations = self.explainer.explain(X_data)
+
+        # determine prediction threshold relative to the target scaling for regression
+        if self.model.task == "regression":
+            prediction_threshold = self.epsilon * (y_data.max() - y_data.min())
+        else:
+            prediction_threshold = self.epsilon
 
         # start the evolution process
         gen_stds, gen_fitnesses, early_stopping, logging, total_time = evolve_population(
@@ -1570,13 +1600,13 @@ class DataPoisoningAttack(BaseAttack):
             n_generations=N_GEN,
             elite_prop=P_ELITE,
             p_combine=P_COMBINE,
-            X_data=self.dataset.X_test_scaled.values,
+            X_data=X_data,
             X_min=self.X_min,
             X_max=self.X_max,
             X_cat=self.X_cat,
             early_stopping_patience=EARLY_STOPPING_PATIENCE,
             rng=self.rng,
-            prediction_threshold=self.epsilon
+            prediction_threshold=prediction_threshold
         )
 
         # save the best found stds for data poisoning on the dataset
@@ -1585,10 +1615,11 @@ class DataPoisoningAttack(BaseAttack):
         # save the results of the evolution process to json
         results = {
             "generation_stds": gen_stds.tolist(),
-            "generation_fitnesses": gen_fitnesses.tolist(),
             "best_stds": early_stopping.best_stds.tolist(),
+            "generation_fitnesses": gen_fitnesses.tolist(),
             "best_fitness": early_stopping.best_fitness,
-            "best_mean_probability": early_stopping.mean_probability,
+            "mean_probabilities": [log[2] for log in logging],
+            "last_mean_probability": early_stopping.mean_probability,
             "total_time_seconds": total_time,
             "meta": {
                 "N_GEN": N_GEN,
@@ -1608,7 +1639,8 @@ class DataPoisoningAttack(BaseAttack):
         }
 
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-        with open(f"./results/DataPoisoningAttack_evolution_results_{timestamp}.json", "w") as f:
+        filepath = Path(Path(__file__).parent, '..', '..', '..', 'skripts', 'results', f'DataPoisoningAttack_evolution_results_{timestamp}.json')
+        with open(filepath, "w") as f:
             json.dump(results, f, indent=4)
 
         # restore original explainer number of samples
@@ -1688,7 +1720,7 @@ class DataPoisoningAttack(BaseAttack):
         # check validity of the poisoned x on every feature
         all_okay, _ = self.is_attack_valid(x, x_poisoned, epsilon=self.epsilon)
 
-        return np.where(all_okay[:, None], x_poisoned, x)
+        return np.where(all_okay.reshape(-1, 1), x_poisoned, x)
 
     def _generate(
         self,

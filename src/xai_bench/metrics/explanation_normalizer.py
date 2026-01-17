@@ -15,11 +15,11 @@ class ExplanationNormalizer:
             return e
 
         if self.mode == "l1":
-            s = np.sum(np.abs(e))
+            s = np.sum(np.abs(e), axis=-1, keepdims=True)
             return e / s if s > 0 else e
 
         if self.mode == "l2":
-            n = np.linalg.norm(e)
+            n = np.linalg.norm(e, axis=-1, keepdims=True)
             return e / n if n > 0 else e
 
         raise ValueError(f"Unknown normalization mode: {self.mode}")

@@ -87,8 +87,7 @@ class GreedyHillClimb(BaseAttack):
         seed: int = None,
         task: Literal["classification", "regression"] = "classification",
     ):
-        super().__init__(model,task=task, epislon=epsilon, stats=[self, "GreedyHillClimb"])
-        self.dataset = dataset
+        super().__init__(model,task=task, epsilon=epsilon, stats=[self, "GreedyHillClimb"],dataset=dataset)
         self.model = model
         self.explainer = explainer
         self.metric = metric

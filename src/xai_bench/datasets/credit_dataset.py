@@ -41,7 +41,6 @@ class CreditDataset(BaseDataset):
 # There are no labels. Therefore, only the Train dataset is used.
 
 if __name__ == "__main__":
-    import os
     path = r"src/xai_bench/datasets/cs-training_clean.csv"
     dataset = CreditDataset(path)
 

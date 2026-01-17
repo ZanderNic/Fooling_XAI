@@ -5,12 +5,16 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Type, Callable
+import traceback
+import inspect
 
 # 3-party imports
-import pandas as pd
 import numpy as np
 from rich.progress import track
+from rich.panel import Panel
+from rich.align import Align
+from itertools import product
 
 # projekt imports
 from xai_bench.base import BaseAttack, BaseDataset, BaseExplainer, BaseMetric, BaseModel
@@ -102,18 +106,69 @@ def load_attack(
     """
         Instantiate and return an attack according to the selected attack string.
     """
-    assert dataset.task is not None, "Dataset orpblem .()"
+    assert dataset.task is not None, "Dataset problem .()"
 
-    if attack_string == "DistributionShiftAttack":
-        from xai_bench.attacks.distribution_shift_attack import DistributionShiftAttack
-        attack =  DistributionShiftAttack(
+    if attack_string == "RandomWalkAttack":
+        from xai_bench.attacks.random_walk_attack import RandomWalkAttack
+        attack = RandomWalkAttack(
             dataset=dataset,
             model=model,
-            
-            # explainer=explainer,  # TODO !!!!!!!11
-            # metric=metric,
-            # random_state=seed,
-            task=dataset.task
+            explainer=explainer,
+            metric=metric,
+            epsilon=epsilon,
+            seed=seed,
+            task=dataset.task,
+            num_steps=100
+        )
+        
+        attack.fit()
+        return attack
+    
+    if attack_string == "RandomWalkWithMemoryAttack":
+        from xai_bench.attacks.random_walk_with_memory_attack import RandomWalkWithMemoryAttack
+        attack = RandomWalkWithMemoryAttack(
+            dataset=dataset,
+            model=model,
+            explainer=explainer,
+            metric=metric,
+            epsilon=epsilon,
+            seed=seed,
+            task=dataset.task,
+            num_runs=10,
+            num_steps=100
+        )
+        
+        attack.fit()
+        return attack
+    
+    if attack_string == "MonteCarloAttack":
+        from xai_bench.attacks.monte_carlo_attack import MonteCarloAttack
+        attack = MonteCarloAttack(
+            dataset=dataset,
+            model=model,
+            explainer=explainer,
+            metric=metric,
+            epsilon=epsilon,
+            seed=seed,
+            task=dataset.task,
+            num_candidates=100,
+            max_distance=0.1
+        )
+        
+        attack.fit()
+        return attack
+    
+    if attack_string == "TrainLookupAttack":
+        from xai_bench.attacks.train_lookup_attack import TrainLookupAttack
+        attack = TrainLookupAttack(
+            dataset=dataset,
+            model=model,
+            explainer=explainer,
+            metric=metric,
+            epsilon=epsilon,
+            seed=seed,
+            task=dataset.task,
+            max_candidates=100
         )
         
         attack.fit()
@@ -124,13 +179,17 @@ def load_attack(
         attack =  ColumnSwitchAttack(
             model=model,
             task= dataset.task,
-            epsilon=epsilon
-            #explainer=explainer,
-            #metric=metric,
+            dataset=dataset,
+            metric=metric,
+            explainer=explainer,
+            epsilon=epsilon,
+            n_switches=8,
+            max_tries=1000,
+            numerical_only=False
             #random_state=seed,
         )
         
-        attack.fit(dataset=dataset, n_switches=5, max_tries=1000, numerical_only=True)
+        attack.fit()
         return attack
     
     if attack_string == "DataPoisoningAttack":
@@ -145,17 +204,18 @@ def load_attack(
         )
 
         attack.fit(
-            N_GEN=1,  # for testing
-            N_POP=10,
-            N_SAMPLE=3,
+            N_GEN=120,
+            N_POP=20,
+            N_SAMPLE=10,
             INIT_MUTATION_RATE=1.0,
-            INIT_STD=0.0,
-            P_ELITE=0.1,
+            INIT_STD=0.2,
+            P_ELITE=0.05,
             P_COMBINE=0.1,
-            DRIFT_THRESHOLD=0.1,
+            DRIFT_THRESHOLD=0.3,
             DRIFT_CONFIDENCE=0.95,
             EARLY_STOPPING_PATIENCE=7,
-            EXPLAINER_NUM_SAMPLES=100
+            EXPLAINER_NUM_SAMPLES=150,
+            EVOLUTION_DATA_NUM_SAMPLES=200
         )
 
         return attack
@@ -203,18 +263,129 @@ def save_result_json(path: Path, payload: Dict[str, Any]) -> None:
     with path.open("w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, ensure_ascii=False)
 
-
 def get_attack_success(X:np.ndarray,X_adv:np.ndarray) -> tuple[np.ndarray, int, float]: 
     assert X.shape == X_adv.shape, "Must have same shape"
-    mask = X==X_adv
-    return mask.all(axis=1), int(mask.all(axis=1).sum()), float(mask.all(axis=1).sum()/len(X))
+    unchanged = (X == X_adv).all(axis=1)
+    success = ~unchanged
 
-def calcualte_metrics(X_exp:np.ndarray, X_adv_exp:np.ndarray, METRICS:dict)->dict:
+    num_success = int(success.sum())
+    success_rate = float(num_success / len(X))
+
+    return success, num_success, success_rate
+
+def calculate_metrics(X_exp:np.ndarray, X_adv_exp:np.ndarray, METRICS:dict)->dict:
     explain_scores: Dict[str, dict] = {}
     for name, MetricCls in track(
-        METRICS.items(), description="Caluclating Explaination scores", transient=True
+        METRICS.items(), description="Caluclating Explaination scores", transient=True,console=console
     ):
         m: BaseMetric = MetricCls()
         s = m.compute(X_exp, X_adv_exp)
         explain_scores[name] = {"mean": float(s.mean()), "std": float(s.std())}
     return explain_scores
+
+
+def infer_smoke_test(datasets:dict[str,Type[BaseDataset]],models:list[str],explainers:list[str],attacks:list[str])->tuple[dict[str,Type[BaseDataset]],list[str],list[str],list[str]]:
+    console.rule("[bold green]Setting smoketest parameters[/]")
+    console.print("")
+    # ask for dataset
+    ds = {k:datasets[k] for k in _ask([*datasets.keys()])}
+    mo = _ask(models)
+    ex = _ask(explainers)
+    at = _ask(attacks)
+
+    return ds, mo, ex, at
+
+def _ask(things:list[str]):
+    response = console.input(f"[green] Out of the following, which should be included? (seperate with ',' or press enter for all):[/]\n[#d7f5d7]{' - '.join(things)}[/]\n")
+    if response=="":
+        return things
+    else:
+        return response.split(",")
+
+
+"""
+Runs a smoke test on all combinations
+"""
+def smoke_test(run_func:Callable, datasets:dict[str,Type[BaseDataset]],metrics:dict[str,Type[BaseMetric]],models:list[str],explainers:list[str],attacks:list[str]):
+    # print run smoek test
+    console.print(
+        Panel(
+            Align.center("SMOKE TEST",vertical="middle"),
+            style="bold red",
+            border_style="red",
+            padding=(3,10)
+            )
+        )
+    num_samples = 2
+    console.print(Align.center(f"Over the parameters:  {list(datasets.keys())},{['L2']},{models}, {attacks}, {explainers}"),style="bold red")
+    console.print(Align.center(f"Using only [bold cyan]{num_samples}[/bold cyan] samples."),style="bold red")
+    result_dir = Path(f"./results/smoke_test_{time.time()}")
+    result_dir.mkdir(parents=True, exist_ok=True)
+    for dataset, metric, model, attack, explainer in track(product(datasets.keys(),["L2"],models,attacks,explainers),description="Going through all settings",total=len(datasets)*len(models)*len(attacks)*len(explainers), console=console):
+        try:
+            # print settings
+            p = Panel(f"Current Paramters: {dataset} - {metric} - {model} - {attack} - {explainer}",style="cyan",expand=False)
+            console.print(Align.center(p))
+            # run run
+            result = run_func(
+                dataset=datasets[dataset](),
+                model_name=model, # type: ignore
+                attack_name=attack, # type: ignore 
+                explainer_name=explainer, # type: ignore
+                metric=metrics["L2"](),
+                seed=42,
+                num_samples=num_samples,
+                train_samples=num_samples
+            )
+            # save results
+            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+            filename = (
+                f"{dataset}__"
+                f"{model}__"
+                f"{explainer}__"
+                f"{attack}__"
+                f"seed{42}__"
+                f"{timestamp}.json"
+            )
+
+            out_path = result_dir / filename
+            with out_path.open("w", encoding="utf-8") as f:
+                json.dump(result, f, indent=2, ensure_ascii=False)
+        except Exception:
+            error_file = result_dir / (f"error_{time.time_ns()}.txt")
+            console.print(Panel(f"[bold red]An error occured![/]\n\nFor further inforamtion look see [lightgray italic]{error_file}[/]",style="bold red"))
+            with error_file.open("w") as f:
+                f.write(traceback.format_exc()+"\n\n"+f"Current Paramters: {dataset} - {metric} - {model} - {attack} - {explainer}")
+
+
+def _json_safe(value):
+    try:
+        json.dumps(value)
+        return value
+    except (TypeError, OverflowError):
+        return str(value)
+    
+def get_args(*objects):
+    result = {}
+
+    for obj in objects:
+        cls = obj.__class__
+        name = cls.__name__
+
+        sig = inspect.signature(cls.__init__)
+        params = list(sig.parameters.values())[1:]  # skip self
+
+        init_args = {}
+        for p in params:
+            if hasattr(obj, p.name):
+                value = getattr(obj, p.name)
+            elif p.default is not inspect._empty:
+                value = p.default
+            else:
+                value = None
+
+            init_args[p.name] = _json_safe(value)
+
+        result[name] = init_args
+
+    return result

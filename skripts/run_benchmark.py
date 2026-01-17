@@ -2,14 +2,13 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from rich import print as rich_print
-from rich.progress import track
 
 try:
     import xai_bench  # noqa: F401
 except ModuleNotFoundError:
     # in case module not correcltyloaded hardcode path
     rich_print(
-        f"[#aa0000][bold]xai_bench not found![/bold] Adding [italic #222222]{(Path(__file__).parent.parent / 'src').__str__()}[/italic #222222] into python path.[/#aa0000]"
+        f"[bold][red]xai_bench not found![/bold] Adding [italic #222222]{(Path(__file__).parent.parent / 'src').__str__()}[/italic #222222] into python path.[/]"
     )
     sys.path.insert(0, (Path(__file__).parent.parent / "src").__str__())
 
@@ -18,10 +17,9 @@ import argparse
 import json
 from dataclasses import asdict
 from datetime import datetime, timezone
-from typing import Dict, Literal
+from typing import Dict, Literal, Optional
 
 # 3-party imports
-from sklearn.metrics import accuracy_score
 import numpy as np
 
 
@@ -40,7 +38,9 @@ from xai_bench.datasets.covtype_forest import ForestDataset
 # metrics
 from xai_bench.metrics.cosine_metric import CosineMetric
 from xai_bench.metrics.spearmen_metric import SpearmanMetric
-from xai_bench.metrics.wasserstein_metric import WassersteinMetric
+from xai_bench.metrics.l2_metric import L2Metric
+from xai_bench.metrics.kendall_tau_metric import KendallTauMetric
+from xai_bench.metrics.distortion_metric import DistortionMetric
 
 # utils imports
 from run_benchmark_utils import (
@@ -50,7 +50,10 @@ from run_benchmark_utils import (
     now_utc_iso,
     timed_call,
     get_attack_success,
-    calcualte_metrics
+    calculate_metrics,
+    smoke_test,
+    infer_smoke_test,
+    get_args
 )
 
 
@@ -63,27 +66,38 @@ DATASETS = {
 }
 
 METRICS = {
+    "L2": L2Metric,
     "Cosine": CosineMetric,
     "Spearman": SpearmanMetric,
-    "Wasserstein": WassersteinMetric,
+    # "KendallTau": KendallTauMetric,
+    # "Distortion": DistortionMetric
 }
 
 MODELS = ["CNN1D", "MLP", "RF"]
-ATTACKS = ["DistributionShiftAttack", "ColumnSwitchAttack", "DataPoisoningAttack", "GreedyHillClimb"]
+ATTACKS = ["RandomWalkAttack", "RandomWalkWithMemoryAttack", "MonteCarloAttack", "TrainLookupAttack", "ColumnSwitchAttack", "DataPoisoningAttack", "GreedyHillClimb"]
 EXPLAINER = ["Shap", "Lime"]
 
 
 def run(
     dataset: BaseDataset,
     model_name: Literal["CNN1D", "MLP", "RF"],
-    attack_name: Literal["DistributionShiftAttack", "ColumnSwitchAttack", "DataPoisoningAttack"],
+    attack_name: Literal["RandomWalkAttack", "RandomWalkWithMemoryAttack", "MonteCarloAttack", "TrainLookupAttack", "ColumnSwitchAttack", "DataPoisoningAttack"],
     explainer_name: Literal["Shap", "Lime"],
     metric: BaseMetric,
     seed: int,
     num_samples: int = 1000,
     epsilon: float = 0.05,
+    train_samples: Optional[int]=None
 ):
     """ """
+
+    if train_samples is not None:
+        dataset.X_test = dataset.X_test[:train_samples] # type: ignore
+        dataset.X_test_scaled = dataset.X_test_scaled[:train_samples] # type: ignore
+        dataset.X_train = dataset.X_train[:train_samples] # type: ignore
+        dataset.X_train_scaled = dataset.X_train_scaled[:train_samples] # type: ignore
+        dataset.y_test = dataset.y_test[:train_samples] # type: ignore
+        dataset.y_train = dataset.y_train[:train_samples] # type: ignore
 
     # load model
     with console.status(f"{TC} Loading model: {model_name}", spinner="shark"):
@@ -94,7 +108,6 @@ def run(
     assert dataset.X_train_scaled is not None and dataset.y_train is not None, (
         "Something went wrong with the dataset"
     )
-    console.print(dataset.features,dataset.feature_mapping)
     with console.status(f"{TC} Fitting Model", spinner="shark"):
         model.fit(dataset.X_train_scaled.values, dataset.y_train.values)
     console.print(f"{RUN_TEXT} Fitted Model ")
@@ -104,8 +117,8 @@ def run(
         "Something went wrong with the dataset"
     )
     with console.status(f"{TC} Calculating accuracy", spinner="shark"):
-        acc = accuracy_score(
-            dataset.y_test.values, model.predict(dataset.X_test_scaled.values)
+        acc = model.score(
+            dataset.X_test_scaled.values, dataset.y_test.values
         )
     console.print(f"{RUN_TEXT} Calculated accuracy")
 
@@ -138,12 +151,14 @@ def run(
 
     # how many samples to get the score
     if len(dataset.X_test_scaled) <= num_samples:
-        X_test = dataset.X_test_scaled
-        y_test =  dataset.y_test.values
+        X_test = dataset.X_test_scaled.values
+        y_test = dataset.y_test.values
     else:
-        rng = np.random.default_rng(seed)
-        mask = np.zeros(len(dataset.X_test_scaled), dtype=bool)
-        mask[rng.choice(len(dataset.X_test_scaled), size=num_samples, replace=False)] = True
+        sample_indices = np.random.RandomState(seed).choice(
+            dataset.X_test_scaled.shape[0], size=num_samples, replace=False
+        )
+        X_test = dataset.X_test_scaled.iloc[sample_indices].values
+        y_test = dataset.y_test.iloc[sample_indices].values
 
         X_test = dataset.X_test_scaled.iloc[mask]
         y_test = dataset.y_test.iloc[mask].values
@@ -153,35 +168,35 @@ def run(
     console.print(f"{RUN_TEXT} Generated Attack")
 
     with console.status(f"{TC} Calculating attack accuracy  ", spinner="shark"):
-        predict_accuracy  = accuracy_score(
-            y_test, model.predict(X_adv)
+        predict_accuracy  = model.score(
+            X_adv, y_test
         )
     console.print(f"{RUN_TEXT} Calculated attack accuracy")
 
     with console.status(f"{TC} Calculating model fidelity after attack  ", spinner="shark"):
-        model_attack_fidelity  = accuracy_score(
-            model.predict(X_test), model.predict(X_adv)
+        model_attack_fidelity  = model.score(
+            X_adv, model.predict(X_test)
         )
-    console.print(f"{RUN_TEXT} Calculated attack accuracy")
+    console.print(f"{RUN_TEXT} Calculated model attack fidelity")
 
     # generate explanation for real dataset X_test and X_adv
     with console.status(f"{TC} Explaining real X", spinner="shark"):
-        x_real_exp = explainer.explain(np.asarray(X_test))
+        x_real_exp = explainer.explain(X_test)
 
     with console.status(f"{TC} Explaining adversarial X", spinner="shark"):
         x_adv_exp = explainer.explain(X_adv)
     console.print(f"{RUN_TEXT} All X explained")
 
     # get attack success
-    mask, succ_count, succ_rate = get_attack_success(X_test.to_numpy(),X_adv)
+    mask, succ_count, succ_rate = get_attack_success(X_test, X_adv)
 
     with console.status(f"{TC} Calcualting Scores on ALL data and only successfull attacks", spinner="shark"):
-        explain_scores_all = calcualte_metrics(x_real_exp,x_adv_exp,METRICS)
+        explain_scores_all = calculate_metrics(x_real_exp,x_adv_exp,METRICS)
         if succ_count>1:
-            explain_scores_on_success_only = calcualte_metrics(x_real_exp[~mask],x_adv_exp[~mask],METRICS)
+            explain_scores_on_success_only = calculate_metrics(x_real_exp[mask],x_adv_exp[mask],METRICS)
         else:
             explain_scores_on_success_only = {"No metrics possible": "No successfull attacks"}
-    console.print(f"{RUN_TEXT} All explaination scores calcualted")
+    console.print(f"{RUN_TEXT} All explaination scores calculated")
 
     stats = StatCollector.collect(model,attack,explainer)
     console.print(stats[0])
@@ -196,7 +211,7 @@ def run(
             "attack": attack.__class__.__name__,
             "explainer": explainer.__class__.__name__,
             "selected_metric_for_attack": metric.__class__.__name__,
-            "num_samples": int(len(X_test)),
+            "num_samples": X_test.shape[0],
         },
         "timing": {
             "explainer_fit": asdict(t_exp_fit),
@@ -212,7 +227,8 @@ def run(
         },
         "explain_scores_on_all": explain_scores_all,
         "explain_scores_on_success_only": explain_scores_on_success_only,
-        "stats":stats[1]
+        "stats":stats[1],
+        "args":get_args(model,dataset,attack,explainer)
     }
 
     return result
@@ -221,11 +237,11 @@ def run(
 if __name__ == "__main__":
     console.print("Checking Arguments")
     parser = argparse.ArgumentParser()
-    parser.add_argument("dataset", choices=DATASETS.keys())
-    parser.add_argument("model", choices=MODELS)
-    parser.add_argument("attack", choices=ATTACKS)
-    parser.add_argument("explainer", choices=EXPLAINER)
-    parser.add_argument("metric", choices=METRICS.keys())
+    parser.add_argument("dataset", nargs="?", choices=DATASETS.keys())
+    parser.add_argument("model", nargs="?", choices=MODELS)
+    parser.add_argument("attack", nargs="?", choices=ATTACKS)
+    parser.add_argument("explainer", nargs="?", choices=EXPLAINER)
+    # parser.add_argument("metric", choices=METRICS.keys())
     parser.add_argument(
         "--seed",
         type=int,
@@ -238,35 +254,47 @@ if __name__ == "__main__":
         default=1000,
         help="Num samples from the test set that are used for the evaluation",
     )
+    parser.add_argument(
+        "-s", "--smoke-test",
+        action='store_true',
+        help= "Run a smoke test over all available datatsets/attacks/explainers/metrics and save overview result. Will ignore all other parameters."
+    )
 
     args = parser.parse_args()
+    if args.smoke_test:
+        # ask user what to include in smoke test
+        ds, mo, ex, at = infer_smoke_test(DATASETS,MODELS,EXPLAINER,ATTACKS)
+        smoke_test(run,ds, METRICS, mo, ex, at)
+        exit(0)
+    else:
+        if args.dataset is None or args.model is None or args.attack is None or args.explainer is None:
+            raise ValueError("The arguments must be present when not running smoke test")
+        console.print(f"[#69db88][RUN][/#69db88]{TC} Starting new run with: [/]", args)
+        result = run(
+            dataset=DATASETS[args.dataset](),
+            model_name=args.model,
+            attack_name=args.attack,
+            explainer_name=args.explainer,
+            metric=METRICS["L2"](),
+            seed=args.seed,
+            num_samples=args.num_samples,
+        )
 
-    console.print(f"[#69db88][RUN][/#69db88]{TC} Starting new run with: [/]", args)
-    result = run(
-        dataset=DATASETS[args.dataset](),
-        model_name=args.model,
-        attack_name=args.attack,
-        explainer_name=args.explainer,
-        metric=METRICS[args.metric](),
-        seed=args.seed,
-        num_samples=args.num_samples
-    )
+        results_dir = Path("results")
+        results_dir.mkdir(parents=True, exist_ok=True)
 
-    results_dir = Path("results")
-    results_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+        filename = (
+            f"{args.dataset}__"
+            f"{args.model}__"
+            f"{args.explainer}__"
+            f"{args.attack}__"
+            f"seed{args.seed}__"
+            f"{timestamp}.json"
+        )
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-    filename = (
-        f"{args.dataset}__"
-        f"{args.model}__"
-        f"{args.explainer}__"
-        f"{args.attack}__"
-        f"seed{args.seed}__"
-        f"{timestamp}.json"
-    )
+        out_path = results_dir / filename
+        with out_path.open("w", encoding="utf-8") as f:
+            json.dump(result, f, indent=2, ensure_ascii=False)
 
-    out_path = results_dir / filename
-    with out_path.open("w", encoding="utf-8") as f:
-        json.dump(result, f, indent=2, ensure_ascii=False)
-
-    console.print(f"[bold cyan][OK][/] Results saved to: [italic #9c9c9c]{out_path}[/]",highlight=False)
+        console.print(f"[bold cyan][OK][/] Results saved to: [italic #9c9c9c]{out_path}[/]",highlight=False)

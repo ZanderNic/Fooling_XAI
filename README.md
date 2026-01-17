@@ -27,94 +27,109 @@ Given a configuration `(dataset, model, explainer, attack, metric)` the benchmar
 - fits a model-agnostic explainer (LIME / SHAP Kernel)
 - generates adversarial samples `X_adv` from `X`
 - enforces prediction fidelity constraints (`<= epsilon`)
-- measures explanation drift (Cosine / Spearman / Wasserstein)
-- exports results as JSON (scores, timings, counters)
+- measures explanation drift (e.g. L2/ Cosine / Spearman)
+- exports results as $\texttt{JSON}$ (scores, timings, counters)
 
-**Important:** All attacks in this repository are **black-box**:
-they only require access to model outputs (`predict`, `predict_proba`) and do **not** rely on gradients.
+> **Important:**
+  All attacks in this repository are **black-box**, i.e. they only require access to model outputs (`predict`, `predict_proba`) and do **not** rely on gradients or other model internals.
 
----
 
 ## 🧨 Attacks (included)
 
-- **DistributionShiftAttack**
-- **ColumnSwitchAttack**
-- **DataPoisoningAttack**
+- **RandomWalk**
+- **RandomWalkWithMemory**
+- **MonteCarlo**
+- **TrainLookup**
+- **ColumnSwitch**
+- **DataPoisoning**
 - **GreedyHillClimb**
 
----
 
 ## 🔍 Explainers
 
 - **LIME Tabular**
 - **SHAP KernelExplainer**
 
----
 
 ## 📏 Metrics (explanation drift)
 
+- **L2**
 - **Cosine**
 - **Spearman**
-- **Wasserstein**
+- **Kendall-Tau**
+- **Distortion** (L1 + Kendall-Tau)
 
----
 
 ## 🚀 Installation (fast & simple)
 
-Our Recommendation is to install the package into a clean virtual environment
+It is recommended to install the package into a clean virtual environment:
 
 ### 1) Create and activate a virtual environment
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e .
 ```
 
 ### 2) Install the project in editable mode
 ```bash
 pip install -e .
 ```
-Editable mode (-e) is recommended because you can modify the source code without reinstalling the package.
+Use the editable mode (`-e`) to be able to modify the source code without reinstalling the package.
 
-After the installation is finished, you can run benchmark experiments right away.
+After the installation is finished, benchmark experiments can be run right away.
 
 
 ## ▶️ Run a benchmark
 To start an experiment, run the benchmark script with a specific configuration
-(dataset, model, attack, explainer, metric). The script will:
+(dataset, model, attack, explainer). The script will:
 
 - load and preprocess the dataset
 - train the selected model
 - fit the selected explainer
 - generate adversarial samples using the chosen attack
 - evaluate prediction fidelity (epsilon constraint)
-- compute explanation drift scores using the selected metric
-- write a results `.json` file into the `results/` directory
-
-### Example run:
-```bash
-python skripts/run_benchmark.py credit RF GreedyHillClimb Lime Cosine --seed 42
-```
+- compute explanation drift scores using the available metrics
+- write the results to a $\texttt{JSON}$ file in the `results/` directory
 
 ### Arguments
-The Argument format is as follows:
+The argument format is as follows:
+
 ```bash
-python skripts/run_benchmark.py <dataset> <model> <attack> <explainer> <metric> --seed <int>
+python skripts/run_benchmark.py <dataset> <model> <attack> <explainer> --seed <int>
 ```
+
 - `<dataset>`: dataset name (e.g. `credit`, `heart_uci`, `forest`, `housing`, `prisoners`)
 - `<model>`: model type (e.g. `RF`, `MLP`, `CNN1D`)
-- `<attack>`: attack method (e.g. `GreedyHillClimb`, `ColumnSwitchAttack`, `DataPoisoningAttack`, `DistributionShiftAttack`)
+- `<attack>`: attack method (e.g. `RandomWalkAttack`, `MonteCarloAttack`, `ColumnSwitchAttack`, `DataPoisoningAttack`, `GreedyHillClimb`)
 - `<explainer>`: explanation method (e.g. `Lime`, `Shap`)
-- `<metric>`: explanation drift metric (e.g. `Cosine`, `Spearman`, `Wasserstein`)
-- `--seed`: random seed for reproducibility (controls model init, explainer sampling, and attack randomness)
+- `--seed`: random seed for reproducibility (controls model init, explainer sampling, and attack randomness). Defaults to $42$.
+- `--num_samples`: Number of samples from the test set that are used for the evaluation. Defaults to $1,000$.
+- `--smoke-test`: If set, runs a quick test over all experiment combinations.
 
-After running the command, the benchmark prints progress and saves all results as a JSON file.
+After running the command, the benchmark prints the progress and saves all results as a $\texttt{JSON}$ file.
+
+### Example Run
+```bash
+python skripts/run_benchmark.py credit RF GreedyHillClimb Lime --seed 42 --num_samples 500
+```
+
+## ▶️ Run a Smoketest
+To just check if everything is working, run a test like:
+
+```bash
+python skripts/run_benchmark.py -s
+```
+
+When prompted either press `Enter` to select all or only specific parts that should be included in the smoke test. Then, all of the selected combinations will be run and a report in `results/smoketest` is created.
+
 
 ## 🔧 Extending 
 
-This repo is designed to be extended easily:
+This repository is designed to be extended easily via inheritance:
+
 - add new attacks via BaseAttack
 - add new explainers via BaseExplainer
 - add new metrics via BaseMetric
 - add new datasets via BaseDataset
-Most additions only require a single new file
+
+Most additions only require a single new file and a registration in `skripts/run_benchmark.py`.

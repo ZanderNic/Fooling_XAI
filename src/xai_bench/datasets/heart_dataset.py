@@ -8,30 +8,17 @@ from xai_bench.datasets.base_dataset import BaseDataset
 
 class HeartDataset(BaseDataset):
     def __init__(self, path: Union[str, Path] = None, **kwargs):   
-        self.categorical_features = [
-            "cp", "restecg", "slope", "thal", "sex"
-        ]
+        self.categorical_features = ["cp", "restecg", "slope", "thal", "sex"]
         self.numerical_features = ['age', 'trestbps', 'chol', 'fbs', 'thalach', 'exang', 'oldpeak', 'ca']
         self.target = "condition"
         self.task = "classification"
         
         path = str(path) if path is not None else f"{Path(__file__).parent}/heart.csv"
-    
+
         super().__init__(path, task=self.task, **kwargs)
 
 
     def read(self) -> pd.DataFrame:
-        if self.path.suffix != ".csv":
-            raise ValueError("Path must point to a .csv file")
-
-        if not self.path.exists():
-            dataset_dir = kagglehub.dataset_download(
-                "cherngs/heart-disease-cleveland-uci"
-            )
-            print(f"Downloaded dataset to {dataset_dir}")
-
-            self.path = Path(dataset_dir) / "heart_cleveland_upload.csv"
-
         self.df_raw = pd.read_csv(self.path)
         return self.df_raw
 

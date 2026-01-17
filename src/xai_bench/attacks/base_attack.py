@@ -1,19 +1,22 @@
 from abc import ABC, abstractmethod
 import numpy as np
 
-from xai_bench.base import BaseModel
+from xai_bench.base import BaseModel, BaseDataset
 from typing import Literal, overload, Optional
 from numbers import Number
 import pandas as pd
 from jaxtyping import Shaped
 from xai_bench.stat_collector import StatCollector
+from rich.progress import Progress, TextColumn,BarColumn,TimeElapsedColumn,TimeRemainingColumn
+from xai_bench.console import console, RUN_TEXT
 
 class BaseAttack(ABC):
-    def __init__(self, model: BaseModel, task: Literal["classification","regression"], epislon:Optional[float], stats):
+    def __init__(self, model: BaseModel, task: Literal["classification","regression"], epsilon:Optional[float], stats, dataset:BaseDataset):
         self.model = model
         self.task: Literal["classification","regression"] = task
-        self.epsilon: Optional[float] = epislon
+        self.epsilon: Optional[float] = epsilon
         self.stats = StatCollector(obj=stats[0],comment=stats[1])
+        self.dataset = dataset
     """
     Call beforehand in order to setup the attack. (e.g. finding best parameters)
     """
@@ -30,7 +33,13 @@ class BaseAttack(ABC):
         x = np.asarray(x)
         self.stats("generate", x)
         if x.ndim == 2:
-            return np.asarray([self._generate(s) for s in x])
+            with self._get_generate_progress_bar() as progress:
+                task = progress.add_task(f"{RUN_TEXT} Generating Attack", total=len(x))
+                samples = []
+                for s in x:
+                    samples.append(self._generate(s))
+                    progress.update(task,advance=1)
+                return np.asarray(samples)
         else:
             return self._generate(x)
 
@@ -39,7 +48,7 @@ class BaseAttack(ABC):
         pass
 
     """
-    Will calcualte L1 distance and return mean distance on dataset
+    Will calculate L1 distance and return mean distance on dataset
     """
     @overload
     def _prediction_distance(self, X:np.ndarray, X_adv:np.ndarray) -> np.ndarray:
@@ -68,6 +77,9 @@ class BaseAttack(ABC):
     def is_attack_valid(self, X, X_adv, epsilon=None):
         # prediction distance
         p_dist = self._prediction_distance(X,X_adv)
+        if self.task=="regression":
+            # scale to [0-1] in case of regression
+            p_dist = (p_dist-self.dataset.y_range["max"])/(self.dataset.y_range["max"]/self.dataset.y_range["min"])
         # epsilon
         if epsilon is None:
             assert self.epsilon is not None, "At least one epsilon must be present"
@@ -79,6 +91,20 @@ class BaseAttack(ABC):
     """
     Will use attack when valid, otherwise original
     """
-    def wrap_attack_valid(self, X, X_adv, epislon:Optional[float]=None):
-        _, sums = self.is_attack_valid(X,X_adv,epislon)
+    def wrap_attack_valid(self, X, X_adv, epsilon:Optional[float]=None):
+        _, sums = self.is_attack_valid(X,X_adv,epsilon)
         return np.where(sums,X_adv,X)
+    
+    def _get_generate_progress_bar(self):
+        return Progress(
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(bar_width=40),
+            "[progress.percentage]{task.completed}/{task.total}",
+            "[progress.percentage]({task.percentage:>3.1f}%)",
+            "[bold #ed1cdf]•[/]",
+            TimeElapsedColumn(),
+            "[bold #ed1cdf]/[/]",
+            TimeRemainingColumn(),
+            console=console,
+            transient=True,
+        )
