@@ -160,9 +160,6 @@ def run(
         X_test = dataset.X_test_scaled.iloc[sample_indices].values
         y_test = dataset.y_test.iloc[sample_indices].values
 
-        X_test = dataset.X_test_scaled.iloc[mask]
-        y_test = dataset.y_test.iloc[mask].values
-
     with console.status(f"{TC} Generate attack", spinner="shark"):
         X_adv, t_generate = timed_call(attack.generate, X_test)
     console.print(f"{RUN_TEXT} Generated Attack")
