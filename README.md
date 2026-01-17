@@ -13,8 +13,9 @@
 
 <p align="center">
   <b>XAI-AttackBench</b> is a modular research benchmark for evaluating the robustness of explanation methods
-  against <b>black-box adversarial attacks</b>.
-  The goal is to maximize <i>explanation drift</i> while keeping the <i>model prediction nearly unchanged</i>
+  against <b>black-box adversarial attacks</b> on tabular data.
+  The goal of these attacks is to maximize the <i>explanation drift</i> while keeping the
+  <i>model prediction nearly unchanged</i>.
 </p>
 
 ---

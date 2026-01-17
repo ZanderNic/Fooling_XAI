@@ -17,7 +17,7 @@ import argparse
 import json
 from dataclasses import asdict
 from datetime import datetime, timezone
-from typing import Dict, Literal, Optional
+from typing import Literal, Optional
 
 # 3-party imports
 import numpy as np
@@ -69,8 +69,8 @@ METRICS = {
     "L2": L2Metric,
     "Cosine": CosineMetric,
     "Spearman": SpearmanMetric,
-    # "KendallTau": KendallTauMetric,
-    # "Distortion": DistortionMetric
+    "KendallTau": KendallTauMetric,
+    "Distortion": DistortionMetric
 }
 
 MODELS = ["CNN1D", "MLP", "RF"]
@@ -280,7 +280,7 @@ if __name__ == "__main__":
             num_samples=args.num_samples,
         )
 
-        results_dir = Path("results")
+        results_dir = Path(Path(__file__).parent.parent/"results")
         results_dir.mkdir(parents=True, exist_ok=True)
 
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")

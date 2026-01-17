@@ -126,7 +126,7 @@ class LimeTabularAdapter(BaseExplainer):
         features are assigned an attribution of zero.
 
         Args:
-            x (np.ndarray):
+            X (np.ndarray):
                 One-dimensional input sample of shape (d,), expressed in the model
                 input feature space.
 

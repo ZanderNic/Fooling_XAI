@@ -118,7 +118,7 @@ class GreedyHillClimb(BaseAttack):
     def _sample_directions(
         self,
         x: np.ndarray,
-        num_directions: int  = None,
+        num_directions: int = None,
         p_sparse: float = 0.6,
         p_single: float = 0.3,
         p_escape: float = 0.1,

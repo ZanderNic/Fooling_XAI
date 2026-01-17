@@ -18,13 +18,20 @@ class KendallTauMetric(BaseMetric):
     def __init__(self):
         super().__init__("kendall_tau")
 
+    def _compute(
+        self,
+        e1: np.ndarray,
+        e2: np.ndarray
+    ) -> np.ndarray:
+        return self.compute(e1, e2)
+
     def compute(
         self,
         e1: np.ndarray,
         e2: np.ndarray
     ) -> np.ndarray:
         assert e1.shape == e2.shape, "Explanation vectors must have the same shape."
-        assert e1.ndim > 2, "Explanation vectors must be 1D or 2D arrays."
+        assert 1 <= e1.ndim <= 2, "Explanation vectors must be 1D or 2D arrays."
 
         if e1.ndim == 1:
             e1 = e1.reshape(1, -1)
@@ -42,4 +49,21 @@ class KendallTauMetric(BaseMetric):
         ])
 
         return (-taus + 1) / 2
-        
+
+if __name__ == "__main__":
+    exps_1 = np.array([
+        [0.4, 0.3, 0.2],
+        [-0.2, 0.1, 0.4],
+        [0.3, -0.4, 0.2]
+    ])
+    exps_2 = np.array([
+        [-0.4, 0.3, 0.2],
+        [-0.1, 0.2, 0.4],
+        [0.2, -0.3, 0.4]
+    ])
+    exps_3 = np.array([0.2, 0.3, 0.4])
+
+    metric = KendallTauMetric()
+    print(metric.compute(exps_1, exps_2))
+    print(metric.compute(exps_1[0], exps_3))
+    print(metric.compute(exps_2[1], exps_3))

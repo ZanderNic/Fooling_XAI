@@ -15,19 +15,26 @@ class DistortionMetric(BaseMetric):
     """
     def __init__(
         self, 
-        weights=(0.5, 0.5)
+        weights: tuple[float, float] = (0.5, 0.5)
     ):
         super().__init__("distortion_(L1+KendallTau)")
         self.normalizer = ExplanationNormalizer(mode="l1")
         self.kendall_tau_metric = KendallTauMetric()
 
         if isinstance(weights, (list, tuple)) and \
-            len(weights == 2) and sum(weights) == 1:
+            len(weights) == 2 and sum(weights) == 1:
             self.weights = weights
         else:
             raise ValueError(
                 "Weights must be a list or tuple of two numbers summing to 1."
             )
+
+    def _compute(
+        self,
+        e1: np.ndarray,
+        e2: np.ndarray
+    ) -> np.ndarray:
+        return self.compute(e1, e2)
 
     def compute(
         self,
@@ -35,7 +42,7 @@ class DistortionMetric(BaseMetric):
         e2: np.ndarray
     ) -> np.ndarray:
         assert e1.shape == e2.shape, "Explanation vectors must have the same shape."
-        assert 1 <=e1.ndim <= 2, "Explanation vectors must be 1D or 2D arrays."
+        assert 1 <= e1.ndim <= 2, "Explanation vectors must be 1D or 2D arrays."
 
         if e1.ndim == 1:
             e1 = e1.reshape(1, -1)
@@ -58,3 +65,21 @@ class DistortionMetric(BaseMetric):
         )
 
         return combined_distance
+
+if __name__ == "__main__":
+    exps_1 = np.array([
+        [0.4, 0.3, 0.2],
+        [-0.2, 0.1, 0.4],
+        [0.3, -0.4, 0.2]
+    ])
+    exps_2 = np.array([
+        [-0.4, 0.3, 0.2],
+        [-0.1, 0.2, 0.4],
+        [0.2, -0.3, 0.4]
+    ])
+    exps_3 = np.array([0.2, 0.3, 0.4])
+
+    metric = DistortionMetric()
+    print(metric.compute(exps_1, exps_2))
+    print(metric.compute(exps_1[0], exps_3))
+    print(metric.compute(exps_2[1], exps_3))

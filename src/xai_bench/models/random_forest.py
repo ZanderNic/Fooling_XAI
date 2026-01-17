@@ -73,7 +73,11 @@ class SKRandomForest(BaseModel):
         Xn = _to_numpy(X)
         yn = _check_1d_vector(y)
         
-        self.model = RandomForestClassifier(**self._rf_kwargs)
+        if self.task == "classification":
+            self.model = RandomForestClassifier(**self._rf_kwargs)
+        else:  # regression
+            self.model = RandomForestRegressor(**self._rf_kwargs)
+
         self.model.fit(Xn, yn)
         
         return self
@@ -87,7 +91,7 @@ class SKRandomForest(BaseModel):
         
         proba = self.model.predict_proba(_to_numpy(X))
         proba = np.asarray(proba, dtype=np.float64)
-        
+
         if proba.ndim != 2:
             raise ValueError(f"predict_proba must return array of shape (n, C) but is {proba.shape}")
         

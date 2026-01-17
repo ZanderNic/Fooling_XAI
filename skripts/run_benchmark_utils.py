@@ -176,18 +176,32 @@ def load_attack(
 
     if attack_string == "ColumnSwitchAttack":
         from xai_bench.attacks.switch_column_attack import ColumnSwitchAttack
-        attack =  ColumnSwitchAttack(
-            model=model,
-            task= dataset.task,
-            dataset=dataset,
-            metric=metric,
-            explainer=explainer,
-            epsilon=epsilon,
-            n_switches=8,
-            max_tries=1000,
-            numerical_only=False
-            #random_state=seed,
-        )
+        if smoke_test:
+            assert dataset.numerical_features is not None, "Has to have num features"
+            attack =  ColumnSwitchAttack(
+                model=model,
+                task= dataset.task,
+                dataset=dataset,
+                metric=metric,
+                explainer=explainer,
+                epsilon=epsilon,
+                n_switches=int(len(dataset.numerical_features)*0.5),
+                max_tries=10,
+                numerical_only=True
+            )
+        else:
+            assert dataset.features is not None and dataset.features.feature_names_model is not None, "Has to have features"
+            attack =  ColumnSwitchAttack(
+                model=model,
+                task= dataset.task,
+                dataset=dataset,
+                metric=metric,
+                explainer=explainer,
+                epsilon=epsilon,
+                n_switches=int(len(dataset.features.feature_names_model)*0.5),
+                max_tries=50,
+                numerical_only=False
+            )
         
         attack.fit()
         return attack
@@ -319,7 +333,7 @@ def smoke_test(run_func:Callable, datasets:dict[str,Type[BaseDataset]],metrics:d
     num_samples = 2
     console.print(Align.center(f"Over the parameters:  {list(datasets.keys())},{['L2']},{models}, {attacks}, {explainers}"),style="bold red")
     console.print(Align.center(f"Using only [bold cyan]{num_samples}[/bold cyan] samples."),style="bold red")
-    result_dir = Path(f"./results/smoke_test_{time.time()}")
+    result_dir = Path(Path(__file__).parent.parent/f"./results/smoke_test_{time.time()}")
     result_dir.mkdir(parents=True, exist_ok=True)
     for dataset, metric, model, attack, explainer in track(product(datasets.keys(),["L2"],models,attacks,explainers),description="Going through all settings",total=len(datasets)*len(models)*len(attacks)*len(explainers), console=console):
         try:

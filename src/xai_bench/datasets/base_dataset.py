@@ -38,6 +38,7 @@ class BaseDataset(ABC):
         self.features: Optional[Features] = None
         self.feature_mapping: Dict[str, List[str]] = {}
         self.feature_ranges: Dict[str, Tuple[float, float]] = {}
+        self.y_range: dict[str,float] = {}
 
         self.categorical_features: Optional[List[str]]
         self.numerical_features: Optional[List[str]]
@@ -80,12 +81,13 @@ class BaseDataset(ABC):
         )
 
         # scale numerical features
+        assert self.numerical_features is not None, "Has to have num features"
+        assert self.X_train is not None and self.X_test is not None, "has to have xtrain"
         if len(self.numerical_features) > 0:
 
             self.scaler = StandardScaler()
-            X_train_scaled = self.scaler.fit_transform(self.X_train[self.numerical_features])
-            X_test_scaled = self.scaler.transform(self.X_test[self.numerical_features])
-
+            X_train_scaled = self.scaler.fit_transform(self.X_train[self.numerical_features]) # type: ignore
+            X_test_scaled = self.scaler.transform(self.X_test[self.numerical_features]) # type: ignore
             # traindata scaled
             self.X_train_scaled = pd.concat([
                 pd.DataFrame(
