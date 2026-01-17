@@ -11,7 +11,6 @@ class StatCollector():
         self.obj = obj
         self.comment =comment
         self.active = True
-        self.context = ""
 
     @overload
     def __call__(self, func:str, num_samples:Optional[int]=None) -> None:
@@ -37,12 +36,12 @@ class StatCollector():
         else:
             raise ValueError(f"num samples is neither dataframe, ndarray, int or None, something is wrong :( [{num_samples},{type(num_samples)}]")
 
-        if self.calls.get(self.context+"_"+func) is None:
-            self.calls[self.context+"_"+func] = 0
-        if self.calls_samples.get(self.context+"_"+func) is None:
-            self.calls_samples[self.context+"_"+func] = 0
-        self.calls[self.context+"_"+func]+=1
-        self.calls_samples[self.context+"_"+func] += plus
+        if self.calls.get(func) is None:
+            self.calls[func] = 0
+        if self.calls_samples.get(func) is None:
+            self.calls_samples[func] = 0
+        self.calls[func]+=1
+        self.calls_samples[func] += plus
 
     def __str__(self):
         return f"StatsCollector(obj={self.obj}, comment={self.comment}, calls={self.calls}, calls_samples={self.calls_samples})"
@@ -71,15 +70,6 @@ class StatCollector():
     def deactiavte(self):
         self.active = False
 
-
-    def switch_context(self,context:str="")->None:
-        self.context = context
-    
-    @staticmethod
-    def change_context(context:str="",*args):
-        for arg in args:
-            arg.stats.switch_context(context)
-    
     """
     REsetes all stats collection on this object
     """
