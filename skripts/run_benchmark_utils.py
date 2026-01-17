@@ -247,9 +247,9 @@ def load_attack(
                 metric=metric,
                 explainer=explainer,
                 epsilon=epsilon,
-                n_switches=int(len(dataset.numerical_features)*0.5),
-                max_tries=500,
-                numerical_only=True
+                n_switches=int(len(dataset.features.feature_names_model)*0.5),
+                max_tries=50,
+                numerical_only=False
             )
         
         attack.fit()
