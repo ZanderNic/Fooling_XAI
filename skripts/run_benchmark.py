@@ -87,7 +87,8 @@ def run(
     seed: int,
     num_samples: int = 1000,
     epsilon: float = 0.05,
-    train_samples: Optional[int]=None
+    train_samples: Optional[int]=None,
+    smoke_test:bool=False
 ):
     """ """
 
@@ -100,7 +101,7 @@ def run(
         dataset.y_train = dataset.y_train[:train_samples] # type: ignore
     # load model
     with console.status(f"{TC} Loading model: {model_name}", spinner="shark"):
-        model = load_model(model_name, dataset, seed)
+        model = load_model(model_name, dataset, seed,smoke_test=smoke_test)
     console.print(f"{RUN_TEXT} Loaded model: ", model_name)
 
     StatCollector.change_context("fitting_model",model)
@@ -148,7 +149,8 @@ def run(
             explainer=explainer,
             metric=metric,
             seed=seed,
-            epsilon=epsilon
+            epsilon=epsilon,
+            smoke_test=smoke_test
         )
     console.print(f"{RUN_TEXT} Loaded Attack")
 
@@ -191,7 +193,7 @@ def run(
     with console.status(f"{TC} Explaining adversarial X", spinner="shark"):
         x_adv_exp = explainer.explain(X_adv)
     console.print(f"{RUN_TEXT} All X explained")
-    
+
     StatCollector.change_context("only_metrics",model,explainer,attack)
     # get attack success
     mask, succ_count, succ_rate = get_attack_success(X_test, X_adv)
