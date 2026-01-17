@@ -288,7 +288,7 @@ if __name__ == "__main__":
             num_samples=args.num_samples,
         )
 
-        results_dir = Path("results")
+        results_dir = Path(Path(__file__).parent.parent/"results")
         results_dir.mkdir(parents=True, exist_ok=True)
 
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")

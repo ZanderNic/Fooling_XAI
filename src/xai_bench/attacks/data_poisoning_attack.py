@@ -1639,7 +1639,7 @@ class DataPoisoningAttack(BaseAttack):
         }
 
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-        results_dir = Path(Path(__file__).parent, '..', '..', '..', 'skripts', 'results', 'DPA')
+        results_dir = Path(Path(__file__).parent, '..', '..', '..', 'results', 'DPA')
         results_dir.mkdir(parents=True, exist_ok=True)
         filepath = results_dir / f'DataPoisoningAttack_evolution_results_{timestamp}.json'
         with open(filepath, "w") as f:
