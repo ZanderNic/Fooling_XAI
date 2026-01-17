@@ -238,7 +238,7 @@ def run(
         "stats":stats[1],
         "args":get_args(model,dataset,attack,explainer)
     }
-
+    del model, dataset, explainer, attack
     return result
 
 
