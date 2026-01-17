@@ -416,7 +416,7 @@ def smoke_test(run_func:Callable, datasets:dict[str,Type[BaseDataset]],metrics:d
     num_samples = 2
     console.print(Align.center(f"Over the parameters:  {list(datasets.keys())},{['L2']},{models}, {attacks}, {explainers}"),style="bold red")
     console.print(Align.center(f"Using only [bold cyan]{num_samples}[/bold cyan] samples."),style="bold red")
-    result_dir = Path(f"./results/smoke_test_{time.time()}")
+    result_dir = Path(Path(__file__).parent.parent/f"./results/smoke_test_{time.time()}")
     result_dir.mkdir(parents=True, exist_ok=True)
     for dataset, metric, model, attack, explainer in track(product(datasets.keys(),["L2"],models,attacks,explainers),description="Going through all settings",total=len(datasets)*len(models)*len(attacks)*len(explainers), console=console):
         try:
