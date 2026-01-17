@@ -114,7 +114,7 @@ class TrainLookupAttack(BaseAttack):
             pred_distances = np.abs(train_preds_val - pred_x_val)
 
         sorted_idx = np.argsort(pred_distances)
-        candidate_idx = sorted_idx[: self.max_candidates]
+        candidate_idx = sorted_idx[:self.max_candidates]
         candidates = self.X_train.iloc[candidate_idx]
 
         valid_mask, _ = self.is_attack_valid(

@@ -77,6 +77,10 @@ class BaseAttack(ABC):
     def is_attack_valid(self, X, X_adv, epsilon=None):
         # prediction distance
         p_dist = self._prediction_distance(X,X_adv)
+
+        if p_dist.ndim == 1:
+            p_dist = p_dist.reshape(-1,1)
+
         if self.task=="regression":
             # scale to [0-1] in case of regression
             p_dist = (p_dist-self.dataset.y_range["max"])/(self.dataset.y_range["max"]/self.dataset.y_range["min"])
