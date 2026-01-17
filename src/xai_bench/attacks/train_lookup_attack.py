@@ -1,10 +1,8 @@
 # std lib imports 
-from typing import Literal
-import time
+from typing import Literal, Optional
 
 # 3 party imports
 import numpy as np
-import pandas as pd
 
 # projekt imports
 from xai_bench.base import BaseAttack, BaseDataset, BaseModel, BaseExplainer
@@ -57,8 +55,8 @@ class TrainLookupAttack(BaseAttack):
         metric : BaseMetric,
         epsilon: float = 0.05,
         max_candidates: int = 100,
-        num_samples_explainer: float = 100,
-        seed: int = None,
+        num_samples_explainer: int = 100,
+        seed: Optional[int] = None,
         task: Literal["classification", "regression"] = "classification",
     ):
         super().__init__(model=model, task=task, epsilon=epsilon, stats=[self, "TrainLookupAttack"],dataset=dataset)
@@ -103,6 +101,7 @@ class TrainLookupAttack(BaseAttack):
         """        
         x_2d = x.reshape(1, -1)
 
+        assert self.train_preds is not None
         if self.task == "classification":
             pred_x = self.model.predict_proba(x_2d)
             pred_x_flat = pred_x.ravel()
@@ -110,13 +109,17 @@ class TrainLookupAttack(BaseAttack):
             pred_distances = np.sum(np.abs(train_preds_flat - pred_x_flat), axis=1)
         else:
             pred_x_val = self.model.predict_scalar(x_2d).ravel()
+
             train_preds_val = self.train_preds.ravel()
             pred_distances = np.abs(train_preds_val - pred_x_val)
 
         sorted_idx = np.argsort(pred_distances)
         candidate_idx = sorted_idx[:self.max_candidates]
+        assert self.X_train is not None
         candidates = self.X_train.iloc[candidate_idx]
 
+
+        # really werid topyes here lol. Should be either nd+nd or df+df, not nd+series
         valid_mask, _ = self.is_attack_valid(
             X=np.repeat(x_2d, len(candidates), axis=0),
             X_adv=candidates,
