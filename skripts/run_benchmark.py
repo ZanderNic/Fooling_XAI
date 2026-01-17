@@ -139,9 +139,14 @@ def run(
     # how many samples to get the score
     if len(dataset.X_test_scaled) <= num_samples:
         X_test = dataset.X_test_scaled
+        y_test =  dataset.y_test.values
     else:
-        X_test = dataset.X_test_scaled.sample(n=num_samples)
+        rng = np.random.default_rng(seed)
+        mask = np.zeros(len(dataset.X_test_scaled), dtype=bool)
+        mask[rng.choice(len(dataset.X_test_scaled), size=num_samples, replace=False)] = True
 
+        X_test = dataset.X_test_scaled.iloc[mask]
+        y_test = dataset.y_test.iloc[mask].values
 
     with console.status(f"{TC} Generate attack", spinner="shark"):
         X_adv, t_generate = timed_call(attack.generate, X_test)
@@ -149,7 +154,7 @@ def run(
 
     with console.status(f"{TC} Calculating attack accuracy  ", spinner="shark"):
         predict_accuracy  = accuracy_score(
-            dataset.y_test.values, model.predict(X_adv)
+            y_test, model.predict(X_adv)
         )
     console.print(f"{RUN_TEXT} Calculated attack accuracy")
 
