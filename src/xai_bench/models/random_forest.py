@@ -87,7 +87,7 @@ class SKRandomForest(BaseModel):
         
         proba = self.model.predict_proba(_to_numpy(X))
         proba = np.asarray(proba, dtype=np.float64)
-        
+
         if proba.ndim != 2:
             raise ValueError(f"predict_proba must return array of shape (n, C) but is {proba.shape}")
         

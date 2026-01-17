@@ -126,7 +126,7 @@ class LimeTabularAdapter(BaseExplainer):
         features are assigned an attribution of zero.
 
         Args:
-            x (np.ndarray):
+            X (np.ndarray):
                 One-dimensional input sample of shape (d,), expressed in the model
                 input feature space.
 
@@ -143,7 +143,11 @@ class LimeTabularAdapter(BaseExplainer):
                 If the explainer has not been initialized via `fit()`.
         """
         assert self._lime is not None, "Call fit() first."
-        self.stats("explain",X.shape[0] if X.ndim==2 else 1)
+        assert 1 <= X.ndim <= 2, "Input X must be 1D or 2D array."
+        self.stats("explain", X.shape[0] if X.ndim==2 else 1)
+        
+        if X.ndim == 1:
+            X = X.reshape(1, -1)
         model_prediction = self.model.predict(X)
 
         if self.model.task == "classification":

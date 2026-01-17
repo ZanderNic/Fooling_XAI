@@ -181,7 +181,7 @@ class MonteCarloAttack(BaseAttack):
 
             cand_exp = self.explainer.explain(x_candidate.reshape(1, -1), self.num_samples_explainer)
 
-            score = self.metric._compute(x_exp, cand_exp)
+            score = self.metric.compute(x_exp, cand_exp)
 
             if score > best_score:
                 best_score = score
