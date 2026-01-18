@@ -87,7 +87,8 @@ def run(
     seed: int,
     num_samples: int = 1000,
     epsilon: float = 0.05,
-    train_samples: Optional[int]=None
+    train_samples: Optional[int]=None,
+    smoke_test:bool=False
 ):
     """ """
 
@@ -101,7 +102,7 @@ def run(
 
     # load model
     with console.status(f"{TC} Loading model: {model_name}", spinner="shark"):
-        model = load_model(model_name, dataset, seed)
+        model = load_model(model_name, dataset, seed,smoke_test=smoke_test)
     console.print(f"{RUN_TEXT} Loaded model: ", model_name)
 
     # fit model
@@ -145,7 +146,8 @@ def run(
             explainer=explainer,
             metric=metric,
             seed=seed,
-            epsilon=epsilon
+            epsilon=epsilon,
+            smoke_test=smoke_test
         )
     console.print(f"{RUN_TEXT} Loaded Attack")
 
