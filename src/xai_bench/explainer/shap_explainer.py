@@ -168,7 +168,7 @@ class ShapAdapter(BaseExplainer):
                 Feature importances for the given X in the original feature order.
         """
         assert self.model is not None, "Model not fitted"
-
+        self.stats("explain",X)
         X = np.asarray(X, dtype=float)
         if X.ndim == 1:
             X = X.reshape(1, -1)
