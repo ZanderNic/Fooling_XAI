@@ -75,6 +75,7 @@ class MonteCarloAttack(BaseAttack):
         self.max_distance = max_distance
         self.num_samples_explainer = num_samples_explainer
         
+        assert self.dataset.features
         self.protected_features = self.dataset.categorical_features
         assert self.dataset.features
         self.cols = list(self.dataset.features.feature_names_model)

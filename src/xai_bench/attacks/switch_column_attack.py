@@ -3,6 +3,7 @@ import pandas as pd
 from typing import Optional, Literal, overload
 import math
 
+from xai_bench.explainer.shap_explainer import ShapAdapter
 from xai_bench.base import BaseModel, BaseDataset, BaseAttack, BaseMetric,BaseExplainer
 from rich.progress import (
     Progress,

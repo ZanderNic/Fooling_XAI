@@ -79,6 +79,7 @@ class RandomWalkWithMemoryAttack(BaseAttack):
         self.step_len = step_len
         self.num_samples_explainer = num_samples_explainer
         
+        assert self.dataset.features
         self.protected_features = self.dataset.categorical_features
         assert self.dataset.features
         self.cols = list(self.dataset.features.feature_names_model)
