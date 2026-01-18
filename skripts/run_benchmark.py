@@ -252,7 +252,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--num_samples",
         type=int,
-        default=1000,
+        default=100,
         help="Num samples from the test set that are used for the evaluation",
     )
     parser.add_argument(
