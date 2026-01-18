@@ -80,7 +80,7 @@ def load_explainer(
         from xai_bench.explainer.lime_explainer import LimeTabularAdapter
         return LimeTabularAdapter(
             dataset = dataset,
-            num_samples = 1500,
+            num_samples = 1000,
             random_state= seed
         )
 
@@ -88,8 +88,8 @@ def load_explainer(
         from xai_bench.explainer.shap_explainer import ShapAdapter
         return ShapAdapter(
             dataset = dataset,
-            background_size= 200,
-            num_samples= 1500,
+            background_size= 50,
+            num_samples= 1000,
             random_state= seed
         )
 
