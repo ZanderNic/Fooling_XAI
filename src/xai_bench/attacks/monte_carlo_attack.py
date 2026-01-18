@@ -1,10 +1,8 @@
 # std lib imports 
-from typing import Literal
-import time
+from typing import Literal, Optional
 
 # 3 party imports
 import numpy as np
-import pandas as pd
 
 # projekt imports
 from xai_bench.base import BaseAttack, BaseDataset, BaseModel, BaseExplainer
@@ -49,7 +47,7 @@ class MonteCarloAttack(BaseAttack):
             max_distance : float, default=0.1
                 Maximum distance used for numerical feature updates (scaled by feature range).
 
-            seed : int | None, default=None
+            seed : Optional[int], default=None
                 Random seed for reproducibility. If None, a random seed is used.
 
             task : {"classification", "regression"}, default="classification"
@@ -65,8 +63,8 @@ class MonteCarloAttack(BaseAttack):
         epsilon: float = 0.05,
         num_candidates: int = 100,
         max_distance: float = 0.1,
-        num_samples_explainer: float = 100,
-        seed: int = None,
+        num_samples_explainer: int = 100,
+        seed: Optional[int] = None,
         task: Literal["classification", "regression"] = "classification",
     ):
         super().__init__(model=model, task=task, epsilon=epsilon, stats=[self, "MonteCarloAttack"],dataset=dataset)
@@ -77,7 +75,9 @@ class MonteCarloAttack(BaseAttack):
         self.max_distance = max_distance
         self.num_samples_explainer = num_samples_explainer
         
+        assert self.dataset.features
         self.protected_features = self.dataset.categorical_features
+        assert self.dataset.features
         self.cols = list(self.dataset.features.feature_names_model)
         self.col2idx = {c: i for i, c in enumerate(self.cols)}
 

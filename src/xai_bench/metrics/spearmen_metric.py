@@ -1,7 +1,11 @@
-import numpy as np
-from scipy.stats import spearmanr
+# std-lib imports
 from typing import cast
 
+# 3 party imports
+import numpy as np
+from scipy.stats import spearmanr
+
+# projekt imports
 from xai_bench.metrics.base_metric import BaseMetric
 from xai_bench.metrics.explanation_normalizer import ExplanationNormalizer
 

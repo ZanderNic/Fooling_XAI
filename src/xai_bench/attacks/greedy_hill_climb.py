@@ -1,10 +1,8 @@
 # std lib imports 
-from typing import Literal
-import time
+from typing import Literal, Optional
 
 # 3 party imports
 import numpy as np
-import pandas as pd
 
 # projekt imports
 from xai_bench.base import BaseAttack, BaseDataset, BaseModel, BaseExplainer
@@ -64,7 +62,7 @@ class GreedyHillClimb(BaseAttack):
                 Probability that a sampled candidate move modifies a numerical feature.
                 Otherwise a categorical feature is modified.
 
-            seed : int | None, default=None
+            seed : Optional[int], default=None
                 Random seed for reproducibility. If None, a random seed is used.
 
             task : {"classification", "regression"}, default="classification"
@@ -78,13 +76,13 @@ class GreedyHillClimb(BaseAttack):
         explainer: BaseExplainer,
         metric : BaseMetric,
         epsilon: float = 0.1,
-        num_climbs: int = 40,
-        num_derections: int = 100,
+        num_climbs: int = 30,
+        num_derections: int = 30,
         max_trys : int = 1,
         step_len: float = 0.001,
-        num_samples_explainer: float = 100,
+        num_samples_explainer: int = 100,
         proba_numeric: float = 0.7,
-        seed: int = None,
+        seed: Optional[int] = None,
         task: Literal["classification", "regression"] = "classification",
     ):
         super().__init__(model,task=task, epsilon=epsilon, stats=[self, "GreedyHillClimb"],dataset=dataset)
@@ -152,7 +150,7 @@ class GreedyHillClimb(BaseAttack):
             x : np.ndarray
                 Input sample of shape (d,) in model input space.
 
-            num_directions : int | None, default=None
+            num_directions : Optional[int], default=None
                 Number of candidate perturbations to generate. If None, `self.num_derections`
                 is used.
 
@@ -301,44 +299,159 @@ class GreedyHillClimb(BaseAttack):
                 np.ndarray
                     Best adversarial sample found (shape (d,)).
         """
-        #t0 = time.perf_counter()
-        
         x_exp = self.explainer.explain(x.reshape(1, -1))
-                
-        best_global_x = x.copy()                                        # here the x with the best attack metric will be saved   
-        best_global_metric = 0                                          # here the difference in the metric betwean the real x and the best attack x will be saved 
+
+        best_global_x = x.copy()
+        best_global_metric = -np.inf
 
         for _ in range(self.max_trys):
-            current_x = x.copy() 
-            
+            current_x = x.copy()
+
             for _ in range(self.num_climbs):
-                best_local = current_x.copy()                                       # to ensure we make a step we will save this here                                             
-                best_local_metric = 0
-                
-                # search in self.num_directions different directions
-                candidates = self._sample_directions(current_x, num_directions = self.num_derections)
+                candidates = np.asarray(self._sample_directions(current_x, num_directions=self.num_derections))
 
-                for canidate in candidates:
-                    canidate_exp = self.explainer.explain(canidate.reshape(1, -1), self.num_samples_explainer)
-                    metric = self.metric.compute(canidate_exp, x_exp)
-                    
-                    if metric > best_local_metric and (self.is_attack_valid(current_x.reshape(1, -1), x.reshape(1, -1), self.epsilon)[0]):  # check if current_x is still valid 
-                        best_local = canidate
-                        best_local_metric = metric
-                        current_x = canidate
-                
-                if best_local_metric > best_global_metric:
-                    best_global_metric = best_local_metric
-                    best_global_x = best_local   
+                cand_exps = self.explainer.explain_parallel(candidates, num_samples=self.num_samples_explainer, n_workers= 4) 
+                x_rep = np.broadcast_to(x_exp, (cand_exps.shape[0], x_exp.shape[-1]))       
+                scores = np.asarray(self.metric.compute(cand_exps, x_rep)).reshape(-1)      
+                order = np.argsort(scores)[::-1]
 
-        # t1 = time.perf_counter()
+                chosen = None
+                chosen_score = None
 
-        # adv_exp = self.explainer.explain(best_global_x.reshape(1, -1))
-        # print("\n--- GreedyHillClimb Log ---")
-        # print(f"total _generate   : {(t1 - t0):.4f}s")
-        # print(f"best metric value : {float(np.asarray(metric).mean()):.6f}")
-        # print("x_exp   :", x_exp)
-        # print("adv_exp :", adv_exp)
-        # print("--- end debug ---\n")
-                  
+                for i in order:
+                    cand = candidates[i]
+                    if self.is_attack_valid(cand[None, :], x[None, :], self.epsilon)[0]:
+                        chosen = cand
+                        chosen_score = float(scores[i])
+                        break
+
+                if chosen is not None:
+                    current_x = chosen
+                    if chosen_score is not None and chosen_score > best_global_metric:
+                        best_global_metric = chosen_score
+                        best_global_x = chosen.copy()
+
         return best_global_x
+    
+    
+    def _trace_generate(
+        self,
+        x: np.ndarray,
+        max_steps: Optional[int] = None,
+        num_directions: Optional[int] = None,
+        keep_top_k: int = 15,
+    ) -> tuple[np.ndarray, dict]:
+        """
+            Generate an adversarial sample like `_generate`, but also return a detailed trace of
+            the greedy hill-climb search for visualization/debugging.
+
+            This is intended for **notebook demos** and **debugging** (it stores candidates and
+            scores per step and can become large).
+
+            Parameters
+            ----------
+            x:
+                Single input sample of shape (d,).
+            max_steps:
+                Number of hill-climb iterations to run. If None, uses `self.num_climbs`.
+            num_directions:
+                Number of candidate perturbations per step. If None, uses `self.num_derections`.
+            keep_top_k:
+                Store only the top-k candidates (by score) per step to reduce memory and plotting
+                clutter. If <= 0 or None, stores all candidates.
+
+            Returns
+            -------
+            x_adv:
+                Best adversarial sample found (shape (d,)).
+            trace:
+                Dict with keys:
+                - "x0": original sample (d,)
+                - "path": array of visited points, shape (t+1, d)
+                - "best_scores": best score per step, shape (t,)
+                - "picked_idx": index of picked candidate within the stored candidate subset, shape (t,)
+                - "cand_x": list of arrays (m_t, d) stored candidates per step (top-k or full)
+                - "cand_scores": list of arrays (m_t,) stored scores per step (aligned with cand_x)
+                - "explainer_time": total seconds spent in explainer calls (float)
+                - "total_time": total seconds for trace_generate (float)
+
+            Notes
+            -----
+            - Uses **batch explanation** for candidates (`explainer.explain(C)`) which is usually
+            much faster than explaining each candidate individually.
+            - Uses `self.is_attack_valid` (2D inputs) to enforce the epsilon constraint.
+        """
+        import time
+
+        print("[WARNING] THIS FUNKTION IS ONLY FOR VISUALISATION")
+
+
+        t0 = time.perf_counter()
+        max_steps = self.num_climbs if max_steps is None else int(max_steps)
+        num_directions = self.num_derections if num_directions is None else int(num_directions)
+
+        x0 = np.asarray(x, dtype=float).reshape(-1)
+        current_x = x0.copy()
+
+        exp_time = 0.0
+        t_exp0 = time.perf_counter()
+        x_exp = self.explainer.explain(x0.reshape(1, -1))
+        exp_time += time.perf_counter() - t_exp0
+
+        path = [current_x.copy()]
+        best_scores = []
+        picked_idx = []
+        cand_x_hist = []
+        cand_s_hist = []
+
+        for _ in range(max_steps):
+            if not self.is_attack_valid(current_x.reshape(1, -1), x0.reshape(1, -1), self.epsilon)[0]:
+                break
+
+            candidates = self._sample_directions(current_x, num_directions=num_directions)
+            C = np.asarray(candidates, dtype=float)  # (m, d)
+
+            t_exp0 = time.perf_counter()
+            E_c = self.explainer.explain(C)
+            exp_time += time.perf_counter() - t_exp0
+
+            # metric.compute may return (m,) or (m,1) depending on implementation
+            s = self.metric.compute(E_c, np.repeat(x_exp, repeats=len(C), axis=0))
+            s = np.asarray(s).reshape(-1)
+
+            j_full = int(np.argmax(s))
+            best_scores.append(float(s[j_full]))
+
+            if keep_top_k is not None and keep_top_k > 0 and len(s) > keep_top_k:
+                top_idx = np.argsort(s)[-keep_top_k:]
+                C_store = C[top_idx]
+                s_store = s[top_idx]
+                cand_x_hist.append(C_store)
+                cand_s_hist.append(s_store)
+
+                # map chosen index into stored subset
+                j_store = int(np.where(top_idx == j_full)[0][0]) if j_full in top_idx else int(np.argmax(s_store))
+                picked_idx.append(j_store)
+            else:
+                cand_x_hist.append(C)
+                cand_s_hist.append(s)
+                picked_idx.append(j_full)
+
+            # greedy step
+            current_x = C[j_full].copy()
+            path.append(current_x.copy())
+
+        t1 = time.perf_counter()
+        x_adv = path[-1].copy()
+
+        trace = {
+            "x0": x0,
+            "path": np.asarray(path),
+            "best_scores": np.asarray(best_scores, dtype=float),
+            "picked_idx": np.asarray(picked_idx, dtype=int),
+            "cand_x": cand_x_hist,
+            "cand_scores": cand_s_hist,
+            "explainer_time": float(exp_time),
+            "total_time": float(t1 - t0),
+        }
+        return x_adv, trace

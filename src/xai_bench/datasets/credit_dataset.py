@@ -1,12 +1,18 @@
 # Dataset Give me some credit 
-import pandas as pd
+
+# std-lib imports
+from typing import Optional
 from pathlib import Path
 
+# 3-party import
+import pandas as pd
+
+# project imports
 from xai_bench.datasets.base_dataset import BaseDataset
 
 
 class CreditDataset(BaseDataset):
-    def __init__(self, path: str = None, **kwargs):
+    def __init__(self, path: Optional[str] = None, **kwargs):
         self.categorical_features = []
         self.numerical_features = ['RevolvingUtilizationOfUnsecuredLines', 'age', 'NumberOfTime30-59DaysPastDueNotWorse', 'DebtRatio', 'MonthlyIncome', 'NumberOfDependents', 'CombinedDefaulted', 'CombinedCreditLoans']
         self.target = "SeriousDlqin2yrs"
@@ -21,6 +27,7 @@ class CreditDataset(BaseDataset):
         return self.df_raw
 
     def preprocess(self) -> pd.DataFrame:
+        assert self.df_raw is not None
         df = self.df_raw.copy()
 
         self.y_full = df[self.target]
@@ -28,6 +35,7 @@ class CreditDataset(BaseDataset):
         X = df.drop(columns=[self.target])
         X = X.astype(float)
 
+        assert self.categorical_features is not None
         X = self.one_hot_encode_with_mapping(X, self.categorical_features)
 
         for col in X.columns:
@@ -44,6 +52,7 @@ if __name__ == "__main__":
     path = r"src/xai_bench/datasets/cs-training_clean.csv"
     dataset = CreditDataset(path)
 
+    assert dataset.df_raw is not None and dataset.X_train is not None and dataset.X_test is not None
     print("Raw data shape:", dataset.df_raw.values.shape)
     print("X_train shape:", dataset.X_train.shape)
     print("X_test shape:", dataset.X_test.shape)

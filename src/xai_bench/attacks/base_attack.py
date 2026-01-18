@@ -3,9 +3,7 @@ import numpy as np
 
 from xai_bench.base import BaseModel, BaseDataset
 from typing import Literal, overload, Optional
-from numbers import Number
 import pandas as pd
-from jaxtyping import Shaped
 from xai_bench.stat_collector import StatCollector
 from rich.progress import Progress, TextColumn,BarColumn,TimeElapsedColumn,TimeRemainingColumn
 from xai_bench.console import console, RUN_TEXT

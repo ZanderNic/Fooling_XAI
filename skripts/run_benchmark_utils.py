@@ -26,7 +26,7 @@ def load_model(
     model_string: str,
     dataset: BaseDataset,
     seed: int,
-    smoke_test:bool=False
+    smoke_test: bool = False
 ) -> BaseModel:
     """
         Instantiate and return a model according to the selected model string and dataset task.
@@ -80,7 +80,7 @@ def load_explainer(
         from xai_bench.explainer.lime_explainer import LimeTabularAdapter
         return LimeTabularAdapter(
             dataset = dataset,
-            num_samples = 5000,
+            num_samples = 1500,
             random_state= seed
         )
 
@@ -88,7 +88,7 @@ def load_explainer(
         from xai_bench.explainer.shap_explainer import ShapAdapter
         return ShapAdapter(
             dataset = dataset,
-            background_size= 5000,
+            background_size= 1500,
             random_state= seed
         )
 
@@ -103,13 +103,13 @@ def load_attack(
     metric: BaseMetric,
     seed: int,
     epsilon: float,
-    smoke_test:bool=False
+    smoke_test: bool = False
 ) -> BaseAttack:
     """
         Instantiate and return an attack according to the selected attack string.
     """
     assert dataset.task is not None, "Dataset problem .()"
-
+    
     if attack_string == "RandomWalkAttack":
         from xai_bench.attacks.random_walk_attack import RandomWalkAttack
         if smoke_test:
@@ -134,7 +134,7 @@ def load_attack(
                 task=dataset.task,
                 num_steps=100
             )
-        
+
         attack.fit()
         return attack
     
@@ -228,6 +228,7 @@ def load_attack(
     if attack_string == "ColumnSwitchAttack":
         from xai_bench.attacks.switch_column_attack import ColumnSwitchAttack
         if smoke_test:
+            assert dataset.features is not None, "Has to have num features"
             attack =  ColumnSwitchAttack(
                 model=model,
                 task= dataset.task,
@@ -235,11 +236,12 @@ def load_attack(
                 metric=metric,
                 explainer=explainer,
                 epsilon=epsilon,
-                n_switches=int(len(dataset.numerical_features)*0.5),
-                max_tries=10,
-                numerical_only=True
+                n_switches=int(len(dataset.features.feature_names_model)*0.5),
+                max_tries=5,
+                numerical_only=False
             )
         else:
+            assert dataset.features is not None and dataset.features.feature_names_model is not None, "Has to have features"
             attack =  ColumnSwitchAttack(
                 model=model,
                 task= dataset.task,
@@ -247,9 +249,9 @@ def load_attack(
                 metric=metric,
                 explainer=explainer,
                 epsilon=epsilon,
-                n_switches=int(len(dataset.numerical_features)*0.5),
-                max_tries=500,
-                numerical_only=True
+                n_switches=int(len(dataset.features.feature_names_model)*0.5),
+                max_tries=50,
+                numerical_only=False
             )
         
         attack.fit()
@@ -296,8 +298,7 @@ def load_attack(
                 EXPLAINER_NUM_SAMPLES=150,
                 EVOLUTION_DATA_NUM_SAMPLES=200
             )
-
-
+            
         return attack
     
     if attack_string == "GreedyHillClimb":
@@ -317,6 +318,7 @@ def load_attack(
                 step_len=0.001,
                 proba_numeric=0.7,
             )
+            return attack
         else:
             attack = GreedyHillClimb(
                 dataset=dataset,
@@ -326,14 +328,14 @@ def load_attack(
                 epsilon=epsilon,
                 seed=seed,
                 task=dataset.task,
-                num_climbs=100,
-                num_derections=100,
+                num_climbs=30,
+                num_derections=40,
                 max_trys=1,
+                num_samples_explainer= 100,
                 step_len=0.001,
                 proba_numeric=0.7,
             )
-
-        return attack
+            return attack
 
     raise ValueError(f"Unknown attack type: {attack_string}")
 
