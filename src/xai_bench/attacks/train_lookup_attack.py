@@ -40,7 +40,7 @@ class TrainLookupAttack(BaseAttack):
             max_candidates: int, default=100
                 Maximum number of candidates.
 
-            seed : int | None, default=None
+            seed : Optional[int], default=None
                 Random seed for reproducibility. If None, a random seed is used.
 
             task : {"classification", "regression"}, default="classification"
@@ -109,6 +109,7 @@ class TrainLookupAttack(BaseAttack):
             pred_distances = np.sum(np.abs(train_preds_flat - pred_x_flat), axis=1)
         else:
             pred_x_val = self.model.predict_scalar(x_2d).ravel()
+
             train_preds_val = self.train_preds.ravel()
             pred_distances = np.abs(train_preds_val - pred_x_val)
 
@@ -117,6 +118,8 @@ class TrainLookupAttack(BaseAttack):
         assert self.X_train is not None
         candidates = self.X_train.iloc[candidate_idx]
 
+
+        # really werid topyes here lol. Should be either nd+nd or df+df, not nd+series
         valid_mask, _ = self.is_attack_valid(
             X=np.repeat(x_2d, len(candidates), axis=0),
             X_adv=candidates,

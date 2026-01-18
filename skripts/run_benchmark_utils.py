@@ -26,7 +26,7 @@ def load_model(
     model_string: str,
     dataset: BaseDataset,
     seed: int,
-    smoke_test:bool=False
+    smoke_test: bool = False
 ) -> BaseModel:
     """
         Instantiate and return a model according to the selected model string and dataset task.
@@ -103,13 +103,13 @@ def load_attack(
     metric: BaseMetric,
     seed: int,
     epsilon: float,
-    smoke_test:bool=False
+    smoke_test: bool = False
 ) -> BaseAttack:
     """
         Instantiate and return an attack according to the selected attack string.
     """
     assert dataset.task is not None, "Dataset problem .()"
-
+    
     if attack_string == "RandomWalkAttack":
         from xai_bench.attacks.random_walk_attack import RandomWalkAttack
         if smoke_test:
@@ -134,7 +134,7 @@ def load_attack(
                 task=dataset.task,
                 num_steps=100
             )
-        
+
         attack.fit()
         return attack
     
@@ -298,8 +298,7 @@ def load_attack(
                 EXPLAINER_NUM_SAMPLES=150,
                 EVOLUTION_DATA_NUM_SAMPLES=200
             )
-
-
+            
         return attack
     
     if attack_string == "GreedyHillClimb":

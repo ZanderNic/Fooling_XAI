@@ -57,7 +57,7 @@ class ShapAdapter(BaseExplainer):
 
         # set up a shap expalainer with the background data and model prediction function
         if self.model.task == "classification":
-            def model_pred(X):
+            def model_pred(X): # type: ignore
                 prediction_probs = model.predict_proba(np.asarray(X, dtype=float))
                 return prediction_probs.max(axis=1)
         else:  # regression
@@ -120,7 +120,6 @@ class ShapAdapter(BaseExplainer):
         """
         # Each thread will store its own KernelExplainer to avoid shared-state issues
         local = threading.local()
-
         def get_explainer():
             if getattr(local, 'explainer', None) is None:
                 if self._background is None or self.model is None:
@@ -198,6 +197,7 @@ class ShapAdapter(BaseExplainer):
             )
             shap_vals = np.asarray(shap_vals)
             # use dataset helper to convert to final array format
+            assert self.features is not None, "Has to have fefatues"
             explanation_obj = Explanation(
                 values=shap_vals,
                 feature_names=self.features.feature_names_model

@@ -62,7 +62,7 @@ class GreedyHillClimb(BaseAttack):
                 Probability that a sampled candidate move modifies a numerical feature.
                 Otherwise a categorical feature is modified.
 
-            seed : int | None, default=None
+            seed : Optional[int], default=None
                 Random seed for reproducibility. If None, a random seed is used.
 
             task : {"classification", "regression"}, default="classification"
@@ -76,10 +76,10 @@ class GreedyHillClimb(BaseAttack):
         explainer: BaseExplainer,
         metric : BaseMetric,
         epsilon: float = 0.1,
-        num_climbs: int = 40,
-        num_derections: int = 100,
+        num_climbs: int = 30,
+        num_derections: int = 30,
         max_trys : int = 1,
-        step_len: float = 0.001,
+        step_len: float = 0.0001,
         num_samples_explainer: float = 100,
         proba_numeric: float = 0.7,
         seed: Optional[int] = None,
@@ -150,7 +150,7 @@ class GreedyHillClimb(BaseAttack):
             x : np.ndarray
                 Input sample of shape (d,) in model input space.
 
-            num_directions : int | None, default=None
+            num_directions : Optional[int], default=None
                 Number of candidate perturbations to generate. If None, `self.num_derections`
                 is used.
 
@@ -299,7 +299,7 @@ class GreedyHillClimb(BaseAttack):
                 np.ndarray
                     Best adversarial sample found (shape (d,)).
         """
-        #t0 = time.perf_counter()
+        # t0 = time.perf_counter()
         
         x_exp = self.explainer.explain(x.reshape(1, -1))
                 
@@ -339,13 +339,13 @@ class GreedyHillClimb(BaseAttack):
         # print("--- end debug ---\n")
                   
         return best_global_x
-
-
+    
+    
     def _trace_generate(
         self,
         x: np.ndarray,
-        max_steps: int | None = None,
-        num_directions: int | None = None,
+        max_steps: Optional[int] = None,
+        num_directions: Optional[int] = None,
         keep_top_k: int = 15,
     ) -> tuple[np.ndarray, dict]:
         """

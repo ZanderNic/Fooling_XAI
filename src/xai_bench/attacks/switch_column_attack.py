@@ -13,6 +13,7 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 from xai_bench.console import console
+from xai_bench.explainer.shap_explainer import ShapAdapter
 
 class ColumnSwitchAttack(BaseAttack):
     def __init__(
