@@ -12,6 +12,7 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 from xai_bench.console import console
+from xai_bench.explainer.shap_explainer import ShapAdapter
 
 class ColumnSwitchAttack(BaseAttack):
     def __init__(
@@ -62,7 +63,7 @@ class ColumnSwitchAttack(BaseAttack):
             self.feature_indexes = list(range(len(dataset.features.feature_names_model)))
 
         console.print(
-            f"[bold #ed1cdf][CSA][/][#f7c8f3] Initialising on features: {self.feature_indexes} (aka. {[dataset.features.feature_names_model[f] for f in self.feature_indexes]})"
+            f"[bold #ed1cdf][CSA][/][#f7c8f3] Initialising on features: {self.feature_indexes} (aka. {[dataset.features.feature_names_model[f] for f in self.feature_indexes]}) with {n_switches} switches."
         )
 
     def fit(self):
@@ -133,7 +134,7 @@ class ColumnSwitchAttack(BaseAttack):
                 scores = self.metric.compute(X_exp,X_tmp_exp)
                 save_mask = Bs & (scores>best_scores)
                 best_combis = [combi if b else best for b, combi, best in zip(save_mask,combis,best_combis)]
-                progress.update(task, advance=1,combis=int(save_mask.sum()))
+                progress.update(task, advance=1,combi=int(save_mask.sum()))
 
         return np.stack([self._switch_columns(x, combi) if combi is not None else x for x,combi in zip(X,best_combis)])
 
