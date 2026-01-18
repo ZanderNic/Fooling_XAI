@@ -108,19 +108,31 @@ def load_attack(
     """
     assert dataset.task is not None, "Dataset problem .()"
 
-    if attack_string == "RandomWalkAttack":
+     if attack_string == "RandomWalkAttack":
         from xai_bench.attacks.random_walk_attack import RandomWalkAttack
-        attack = RandomWalkAttack(
-            dataset=dataset,
-            model=model,
-            explainer=explainer,
-            metric=metric,
-            epsilon=epsilon,
-            seed=seed,
-            task=dataset.task,
-            num_steps=100
-        )
-        
+        if smoke_test:
+            attack = RandomWalkAttack(
+                dataset=dataset,
+                model=model,
+                explainer=explainer,
+                metric=metric,
+                epsilon=epsilon,
+                seed=seed,
+                task=dataset.task,
+                num_steps=3
+            )
+        else:
+            attack = RandomWalkAttack(
+                dataset=dataset,
+                model=model,
+                explainer=explainer,
+                metric=metric,
+                epsilon=epsilon,
+                seed=seed,
+                task=dataset.task,
+                num_steps=100
+            )
+
         attack.fit()
         return attack
     
