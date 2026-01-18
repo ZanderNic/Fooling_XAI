@@ -40,7 +40,7 @@ class TrainLookupAttack(BaseAttack):
             max_candidates: int, default=100
                 Maximum number of candidates.
 
-            seed : int | None, default=None
+            seed : Optional[int], default=None
                 Random seed for reproducibility. If None, a random seed is used.
 
             task : {"classification", "regression"}, default="classification"
