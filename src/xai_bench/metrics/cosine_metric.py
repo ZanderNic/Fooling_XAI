@@ -28,11 +28,9 @@ class CosineMetric(BaseMetric):
         self.normalizer = ExplanationNormalizer(normalization_mode)
 
     def _compute(self, e1: np.ndarray, e2: np.ndarray) -> float:
-        e1 = self.normalizer(e1)
-        e2 = self.normalizer(e2)
-        cosine_sim = np.dot(e1, e2)
-        return 1 - cosine_sim
-    
+        raise NotImplementedError("use .compute")
+        return super()._compute(e1, e2)
+
     def compute(self, e1: np.ndarray, e2: np.ndarray) -> np.ndarray:
         e1 = np.asarray(e1)
         e2 = np.asarray(e2)
@@ -41,7 +39,6 @@ class CosineMetric(BaseMetric):
             e1 = e1[None, :]
         if e2.ndim == 1:
             e2 = e2[None, :]
-
         e1 = self.normalizer(e1)
         e2 = self.normalizer(e2)
 
@@ -53,8 +50,17 @@ if __name__ == "__main__":
     exp_1 = np.array([0.4, 0.3, 0.2])
     exp_2 = np.array([-0.4, 0.3, 0.2])
     exp_3 = np.array([0.2, 0.3, 0.4])
+    # exp_2d_2 = np.array([0.4, 0.3, 0.2])
 
     metric = CosineMetric()
-    print(metric.compute(exp_1, exp_2))
-    print(metric.compute(exp_1, exp_3))
-    print(metric.compute(exp_2, exp_3))
+    print(metric.compute(exp_1, exp_1))
+    print(metric._compute(exp_1, exp_1))
+    # print(metric.compute(exp_1, exp_2))
+    # print(metric.compute(exp_1, exp_3))
+    # print(metric.compute(exp_2, exp_3))
+
+
+    # exp_2d_1 = np.array([[0.4, 0.3, 0.2],[0.4, 0.3, 0.2]])
+    # print(metric.compute(exp_2d_1, exp_2d_1))
+
+    # print(np.array([metric._compute(exp_2d_1[i], exp_2d_1[i]) for i in range(len(exp_2d_1))]))

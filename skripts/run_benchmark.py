@@ -107,6 +107,7 @@ def run(
         model = load_model(model_name, dataset, seed,smoke_test=smoke_test)
     console.print(f"{RUN_TEXT} Loaded model: ", model_name)
 
+    StatCollector.change_context("fit_model",model)
     # fit model
     assert dataset.X_train_scaled is not None and dataset.y_train is not None, (
         "Something went wrong with the dataset"
@@ -116,6 +117,7 @@ def run(
     console.print(f"{RUN_TEXT} Fitted Model ")
 
     # predict on test and calucalte accuracy
+    StatCollector.change_context("score_model",model)
     assert dataset.y_test is not None and dataset.X_test_scaled is not None, (
         "Something went wrong with the dataset"
     )
@@ -129,7 +131,7 @@ def run(
     with console.status(f"{TC} Loading explainer", spinner="shark"):
         explainer = load_explainer(explainer_name, dataset, seed)
     console.print(f"{RUN_TEXT} Loaded Explainer")
-
+    StatCollector.change_context("fit_exp",model,explainer)
     # fit explainer
     assert dataset.features is not None, "Something went wrong with the dataset"
     with console.status(f"{TC} Fitting explainer", spinner="shark"):
@@ -139,6 +141,7 @@ def run(
     console.print(f"{RUN_TEXT} Fitted Explainer")
 
     # get attack
+    StatCollector.change_context("fit_attack",model,explainer)
     with console.status(f"{TC} Loading attack", spinner="shark"):
         attack, t_attack_fit = timed_call(
             load_attack,
@@ -152,7 +155,7 @@ def run(
             smoke_test=smoke_test
         )
     console.print(f"{RUN_TEXT} Loaded Attack")
-
+    StatCollector.change_context("generate_attack",model,explainer,attack)
     # how many samples to get the score
     if len(dataset.X_test_scaled) <= num_samples:
         X_test = dataset.X_test_scaled.values
@@ -168,6 +171,7 @@ def run(
         X_adv, t_generate = timed_call(attack.generate, X_test)
     console.print(f"{RUN_TEXT} Generated Attack")
 
+    StatCollector.change_context("metrics",model,explainer,attack)
     with console.status(f"{TC} Calculating attack accuracy  ", spinner="shark"):
         predict_accuracy  = model.score(
             X_adv, y_test
@@ -252,7 +256,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--num_samples",
         type=int,
-        default=1000,
+        default=100,
         help="Num samples from the test set that are used for the evaluation",
     )
     parser.add_argument(
