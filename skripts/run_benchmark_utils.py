@@ -227,8 +227,8 @@ def load_attack(
 
     if attack_string == "ColumnSwitchAttack":
         from xai_bench.attacks.switch_column_attack import ColumnSwitchAttack
-        if False:
-            assert dataset.numerical_features is not None, "Has to have num features"
+        if smoke_test:
+            assert dataset.features is not None, "Has to have num features"
             attack =  ColumnSwitchAttack(
                 model=model,
                 task= dataset.task,
@@ -236,9 +236,9 @@ def load_attack(
                 metric=metric,
                 explainer=explainer,
                 epsilon=epsilon,
-                n_switches=int(len(dataset.numerical_features)*0.5),
-                max_tries=10,
-                numerical_only=True
+                n_switches=int(len(dataset.features.feature_names_model)*0.5),
+                max_tries=5,
+                numerical_only=False
             )
         else:
             assert dataset.features is not None and dataset.features.feature_names_model is not None, "Has to have features"
