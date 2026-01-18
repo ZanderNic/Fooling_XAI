@@ -274,9 +274,10 @@ def load_attack(
                 epsilon=epsilon,
                 seed=seed,
                 task=dataset.task,
-                num_climbs=100,
-                num_derections=100,
+                num_climbs=30,
+                num_derections=40,
                 max_trys=1,
+                num_samples_explainer= 100,
                 step_len=0.001,
                 proba_numeric=0.7,
             )

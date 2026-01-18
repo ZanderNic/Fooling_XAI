@@ -31,6 +31,22 @@ class L2Metric(BaseMetric):
         e2 = self.normalizer(e2)
         return np.linalg.norm(e1 - e2)
 
+    def compute(self, e1: np.ndarray, e2: np.ndarray) -> np.ndarray:
+        e1 = np.asarray(e1)
+        e2 = np.asarray(e2)
+
+        if e1.ndim == 1:
+            e1 = e1[None, :]
+        if e2.ndim == 1:
+            e2 = e2[None, :]
+
+        e1 = self.normalizer(e1)
+        e2 = self.normalizer(e2)
+
+        diff = e1 - e2
+
+        return np.linalg.norm(diff, axis=1)
+
 if __name__ == "__main__":
     exp_1 = np.array([0.4, 0.3, 0.2])
     exp_2 = np.array([-0.4, 0.3, 0.2])

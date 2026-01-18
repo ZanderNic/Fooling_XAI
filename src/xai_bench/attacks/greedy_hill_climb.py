@@ -81,8 +81,8 @@ class GreedyHillClimb(BaseAttack):
         num_climbs: int = 30,
         num_derections: int = 30,
         max_trys : int = 1,
-        step_len: float = 0.0001,
-        num_samples_explainer: float = 100,
+        step_len: float = 0.001,
+        num_samples_explainer: int = 100,
         proba_numeric: float = 0.7,
         seed: int = None,
         task: Literal["classification", "regression"] = "classification",
@@ -301,45 +301,38 @@ class GreedyHillClimb(BaseAttack):
                 np.ndarray
                     Best adversarial sample found (shape (d,)).
         """
-        # t0 = time.perf_counter()
-        
         x_exp = self.explainer.explain(x.reshape(1, -1))
-                
-        best_global_x = x.copy()                                        # here the x with the best attack metric will be saved   
-        best_global_metric = 0                                          # here the difference in the metric betwean the real x and the best attack x will be saved 
+
+        best_global_x = x.copy()
+        best_global_metric = -np.inf
 
         for _ in range(self.max_trys):
-            current_x = x.copy() 
-            
+            current_x = x.copy()
+
             for _ in range(self.num_climbs):
-                best_local = current_x.copy()                                       # to ensure we make a step we will save this here                                             
-                best_local_metric = 0
-                
-                # search in self.num_directions different directions
-                candidates = self._sample_directions(current_x, num_directions = self.num_derections)
+                candidates = np.asarray(self._sample_directions(current_x, num_directions=self.num_derections))
 
-                for canidate in candidates:
-                    canidate_exp = self.explainer.explain(canidate.reshape(1, -1), self.num_samples_explainer)
-                    metric = self.metric.compute(canidate_exp, x_exp)
-                    
-                    if metric > best_local_metric and (self.is_attack_valid(current_x.reshape(1, -1), x.reshape(1, -1), self.epsilon)[0]):  # check if current_x is still valid 
-                        best_local = canidate
-                        best_local_metric = metric
-                        current_x = canidate
-                
-                if best_local_metric > best_global_metric:
-                    best_global_metric = best_local_metric
-                    best_global_x = best_local   
+                cand_exps = self.explainer.explain_parallel(candidates, num_samples=self.num_samples_explainer, num_workers= 4) 
+                x_rep = np.broadcast_to(x_exp, (cand_exps.shape[0], x_exp.shape[-1]))       
+                scores = np.asarray(self.metric.compute(cand_exps, x_rep)).reshape(-1)      
+                order = np.argsort(scores)[::-1]
 
-        # t1 = time.perf_counter()
-        # adv_exp = self.explainer.explain(best_global_x.reshape(1, -1))
-        # print("\n--- GreedyHillClimb Log ---")
-        # print(f"total _generate   : {(t1 - t0):.4f}s")
-        # print(f"best metric value : {float(np.asarray(metric).mean()):.6f}")
-        # print("x_exp   :", x_exp)
-        # print("adv_exp :", adv_exp)
-        # print("--- end debug ---\n")
-                  
+                chosen = None
+                chosen_score = None
+
+                for i in order:
+                    cand = candidates[i]
+                    if self.is_attack_valid(cand[None, :], x[None, :], self.epsilon)[0]:
+                        chosen = cand
+                        chosen_score = float(scores[i])
+                        break
+
+                if chosen is not None:
+                    current_x = chosen
+                    if chosen_score is not None and chosen_score > best_global_metric:
+                        best_global_metric = chosen_score
+                        best_global_x = chosen.copy()
+
         return best_global_x
     
     
