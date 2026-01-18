@@ -785,7 +785,7 @@ def crossover_parent_stds(
         [-dominant_fitness_metrics[:2].sum(), -recessive_fitness_metrics[:2].sum()]
     )
     fitness_ratio = np.abs(fitness_softmax[0] - fitness_softmax[1])
-    dominant_feature_proportion = max(fitness_ratio, -fitness_ratio + 1)  # opposite proportion
+    dominant_feature_proportion = 0.5 * fitness_ratio + 0.5
     dominant_feature_amount = max(
         1, int(dominant_feature_proportion * n_features)
     )
