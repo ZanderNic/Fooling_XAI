@@ -25,7 +25,8 @@ from xai_bench.console import console
 def load_model(
     model_string: str,
     dataset: BaseDataset,
-    seed: int
+    seed: int,
+    smoke_test: bool = False
 ) -> BaseModel:
     """
         Instantiate and return a model according to the selected model string and dataset task.
@@ -101,7 +102,8 @@ def load_attack(
     explainer: BaseExplainer,
     metric: BaseMetric,
     seed: int,
-    epsilon: float
+    epsilon: float,
+    smoke_test: bool = False
 ) -> BaseAttack:
     """
         Instantiate and return an attack according to the selected attack string.
@@ -298,9 +300,8 @@ def load_attack(
             )
             
         return attack
-
     
-     if attack_string == "GreedyHillClimb":
+    if attack_string == "GreedyHillClimb":
         from xai_bench.attacks.greedy_hill_climb import GreedyHillClimb
         if smoke_test:
             attack = GreedyHillClimb(
