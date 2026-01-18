@@ -47,7 +47,7 @@ class MonteCarloAttack(BaseAttack):
             max_distance : float, default=0.1
                 Maximum distance used for numerical feature updates (scaled by feature range).
 
-            seed : int | None, default=None
+            seed : Optional[int], default=None
                 Random seed for reproducibility. If None, a random seed is used.
 
             task : {"classification", "regression"}, default="classification"
@@ -75,6 +75,7 @@ class MonteCarloAttack(BaseAttack):
         self.max_distance = max_distance
         self.num_samples_explainer = num_samples_explainer
         
+        assert self.dataset.features
         self.protected_features = self.dataset.categorical_features
         assert self.dataset.features
         self.cols = list(self.dataset.features.feature_names_model)

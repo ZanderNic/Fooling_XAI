@@ -48,7 +48,7 @@ class RandomWalkAttack(BaseAttack):
             step_len : float, default=0.01
                 Step length used for numerical feature updates (scaled by feature range).
 
-            seed : int | None, default=None
+            seed : Optional[int], default=None
                 Random seed for reproducibility. If None, a random seed is used.
 
             task : {"classification", "regression"}, default="classification"
@@ -76,6 +76,7 @@ class RandomWalkAttack(BaseAttack):
         self.step_len = step_len
         self.num_samples_explainer = num_samples_explainer
         
+        assert self.dataset.features is not None
         self.protected_features = self.dataset.categorical_features
         assert self.dataset.features is not None
         self.cols = list(self.dataset.features.feature_names_model)

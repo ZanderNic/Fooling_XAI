@@ -3,6 +3,7 @@ import pandas as pd
 from typing import Optional, Literal, overload
 import math
 
+from xai_bench.explainer.shap_explainer import ShapAdapter
 from xai_bench.base import BaseModel, BaseDataset, BaseAttack, BaseMetric,BaseExplainer
 from rich.progress import (
     Progress,
@@ -13,6 +14,7 @@ from rich.progress import (
 )
 from xai_bench.console import console
 from xai_bench.explainer.shap_explainer import ShapAdapter
+from xai_bench.explainer.lime_explainer import LimeTabularAdapter
 
 class ColumnSwitchAttack(BaseAttack):
     def __init__(
@@ -130,7 +132,8 @@ class ColumnSwitchAttack(BaseAttack):
                         ) for _ in range(len(X))])
                 X_tmp = np.stack([self._switch_columns(x, combi.tolist()) for x,combi in zip(X,combis)])
                 Bs, _ = self.is_attack_valid(X,X_tmp)
-                X_exp, X_tmp_exp = self.explainer.explain(X,int(self.explainer.num_samples/10)), self.explainer.explain(X_tmp,int(self.explainer.num_samples/10))
+                if isinstance(self.explainer,(ShapAdapter,LimeTabularAdapter)):
+                    X_exp, X_tmp_exp = self.explainer.explain_parallel(X,int(self.explainer.num_samples/10)), self.explainer.explain_parallel(X_tmp,int(self.explainer.num_samples/10))
                 scores = self.metric.compute(X_exp,X_tmp_exp)
                 save_mask = Bs & (scores>best_scores)
                 best_combis = [combi if b else best for b, combi, best in zip(save_mask,combis,best_combis)]

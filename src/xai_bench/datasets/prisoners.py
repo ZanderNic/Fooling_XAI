@@ -24,7 +24,8 @@ class PrisoneresDataset(BaseDataset):
         
         self.y_full = df[self.target]
         X = df.drop(columns=[self.target])
-        assert self.categorical_features is not None, "Has to ahve them"
+
+        assert self.categorical_features is not None, "Has to have them"
         X = self.one_hot_encode_with_mapping(X, self.categorical_features)
 
         X = X.astype(float)
@@ -41,6 +42,7 @@ if __name__ == "__main__":
     path = "src/xai_bench/datasets/compas_recidivism_racial_bias.csv"
 
     dataset = PrisoneresDataset(path=None)
+
     assert dataset.df_raw is not None and dataset.X_train is not None and dataset.X_test is not None
     print("Raw data shape:", dataset.df_raw.values.shape)
     print("X_train shape:", dataset.X_train.shape)

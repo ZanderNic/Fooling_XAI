@@ -88,6 +88,7 @@ class SKRandomForest(BaseModel):
             raise NotImplementedError("predict_proba is only defined for classification models.")
         if self.model is None:
             raise RuntimeError("Model is not fitted. Call fit() first.")
+        
         assert isinstance(self.model,RandomForestClassifier), "has to be calssifier for this prediction"
         proba = self.model.predict_proba(_to_numpy(X))
         proba = np.asarray(proba, dtype=np.float64)

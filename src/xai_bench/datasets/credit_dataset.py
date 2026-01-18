@@ -1,7 +1,13 @@
 # Dataset Give me some credit 
-import pandas as pd
-from pathlib import Path
+
+# std-lib imports
 from typing import Optional
+from pathlib import Path
+
+# 3-party import
+import pandas as pd
+
+# project imports
 from xai_bench.datasets.base_dataset import BaseDataset
 
 
@@ -28,6 +34,7 @@ class CreditDataset(BaseDataset):
         print(self.y_full.isna().sum())
         X = df.drop(columns=[self.target])
         X = X.astype(float)
+
         assert self.categorical_features is not None
         X = self.one_hot_encode_with_mapping(X, self.categorical_features)
 
@@ -46,7 +53,6 @@ if __name__ == "__main__":
     dataset = CreditDataset(path)
 
     assert dataset.df_raw is not None and dataset.X_train is not None and dataset.X_test is not None
-
     print("Raw data shape:", dataset.df_raw.values.shape)
     print("X_train shape:", dataset.X_train.shape)
     print("X_test shape:", dataset.X_test.shape)

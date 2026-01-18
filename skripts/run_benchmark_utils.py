@@ -25,7 +25,8 @@ from xai_bench.console import console
 def load_model(
     model_string: str,
     dataset: BaseDataset,
-    seed: int
+    seed: int,
+    smoke_test: bool = False
 ) -> BaseModel:
     """
         Instantiate and return a model according to the selected model string and dataset task.
@@ -101,7 +102,8 @@ def load_attack(
     explainer: BaseExplainer,
     metric: BaseMetric,
     seed: int,
-    epsilon: float
+    epsilon: float,
+    smoke_test: bool = False
 ) -> BaseAttack:
     """
         Instantiate and return an attack according to the selected attack string.
@@ -138,58 +140,95 @@ def load_attack(
     
     if attack_string == "RandomWalkWithMemoryAttack":
         from xai_bench.attacks.random_walk_with_memory_attack import RandomWalkWithMemoryAttack
-        attack = RandomWalkWithMemoryAttack(
-            dataset=dataset,
-            model=model,
-            explainer=explainer,
-            metric=metric,
-            epsilon=epsilon,
-            seed=seed,
-            task=dataset.task,
-            num_runs=10,
-            num_steps=100
-        )
+        if smoke_test:
+            attack = RandomWalkWithMemoryAttack(
+                dataset=dataset,
+                model=model,
+                explainer=explainer,
+                metric=metric,
+                epsilon=epsilon,
+                seed=seed,
+                task=dataset.task,
+                num_runs=1,
+                num_steps=3
+            )
+        else:
+            attack = RandomWalkWithMemoryAttack(
+                dataset=dataset,
+                model=model,
+                explainer=explainer,
+                metric=metric,
+                epsilon=epsilon,
+                seed=seed,
+                task=dataset.task,
+                num_runs=10,
+                num_steps=100
+            )
         
         attack.fit()
         return attack
     
     if attack_string == "MonteCarloAttack":
         from xai_bench.attacks.monte_carlo_attack import MonteCarloAttack
-        attack = MonteCarloAttack(
-            dataset=dataset,
-            model=model,
-            explainer=explainer,
-            metric=metric,
-            epsilon=epsilon,
-            seed=seed,
-            task=dataset.task,
-            num_candidates=100,
-            max_distance=0.1
-        )
+        if smoke_test:
+            attack = MonteCarloAttack(
+                dataset=dataset,
+                model=model,
+                explainer=explainer,
+                metric=metric,
+                epsilon=epsilon,
+                seed=seed,
+                task=dataset.task,
+                num_candidates=5,
+                max_distance=0.1
+            )
+        else:
+            attack = MonteCarloAttack(
+                dataset=dataset,
+                model=model,
+                explainer=explainer,
+                metric=metric,
+                epsilon=epsilon,
+                seed=seed,
+                task=dataset.task,
+                num_candidates=100,
+                max_distance=0.1
+            )
         
         attack.fit()
         return attack
     
     if attack_string == "TrainLookupAttack":
         from xai_bench.attacks.train_lookup_attack import TrainLookupAttack
-        attack = TrainLookupAttack(
-            dataset=dataset,
-            model=model,
-            explainer=explainer,
-            metric=metric,
-            epsilon=epsilon,
-            seed=seed,
-            task=dataset.task,
-            max_candidates=100
-        )
-        
+        if smoke_test:
+            attack = TrainLookupAttack(
+                dataset=dataset,
+                model=model,
+                explainer=explainer,
+                metric=metric,
+                epsilon=epsilon,
+                seed=seed,
+                task=dataset.task,
+                max_candidates=5
+            )
+        else:
+            attack = TrainLookupAttack(
+                dataset=dataset,
+                model=model,
+                explainer=explainer,
+                metric=metric,
+                epsilon=epsilon,
+                seed=seed,
+                task=dataset.task,
+                max_candidates=100
+            )
         attack.fit()
         return attack
 
     if attack_string == "ColumnSwitchAttack":
         from xai_bench.attacks.switch_column_attack import ColumnSwitchAttack
-        if False:
-            assert dataset.numerical_features is not None, "Has to have num features"
+        if smoke_test:
+            assert dataset.features is not None, "Has to have num features"
             attack =  ColumnSwitchAttack(
                 model=model,
                 task= dataset.task,
@@ -197,9 +236,9 @@ def load_attack(
                 metric=metric,
                 explainer=explainer,
                 epsilon=epsilon,
-                n_switches=int(len(dataset.numerical_features)*0.5),
-                max_tries=10,
-                numerical_only=True
+                n_switches=int(len(dataset.features.feature_names_model)*0.5),
+                max_tries=5,
+                numerical_only=False
             )
         else:
             assert dataset.features is not None and dataset.features.feature_names_model is not None, "Has to have features"
@@ -229,21 +268,37 @@ def load_attack(
             random_state=seed
         )
 
-        attack.fit(
-            N_GEN=120,
-            N_POP=20,
-            N_SAMPLE=10,
-            INIT_MUTATION_RATE=1.0,
-            INIT_STD=0.2,
-            P_ELITE=0.05,
-            P_COMBINE=0.1,
-            DRIFT_THRESHOLD=0.3,
-            DRIFT_CONFIDENCE=0.95,
-            EARLY_STOPPING_PATIENCE=7,
-            EXPLAINER_NUM_SAMPLES=150,
-            EVOLUTION_DATA_NUM_SAMPLES=200
-        )
-
+        if smoke_test:
+            attack.fit(
+                N_GEN=5,
+                N_POP=5,
+                N_SAMPLE=5,
+                INIT_MUTATION_RATE=1.0,
+                INIT_STD=0.2,
+                P_ELITE=0.05,
+                P_COMBINE=0.1,
+                DRIFT_THRESHOLD=0.3,
+                DRIFT_CONFIDENCE=0.95,
+                EARLY_STOPPING_PATIENCE=7,
+                EXPLAINER_NUM_SAMPLES=15,
+                EVOLUTION_DATA_NUM_SAMPLES=20
+            )
+        else:
+            attack.fit(
+                N_GEN=120,
+                N_POP=20,
+                N_SAMPLE=10,
+                INIT_MUTATION_RATE=1.0,
+                INIT_STD=0.2,
+                P_ELITE=0.05,
+                P_COMBINE=0.1,
+                DRIFT_THRESHOLD=0.3,
+                DRIFT_CONFIDENCE=0.95,
+                EARLY_STOPPING_PATIENCE=7,
+                EXPLAINER_NUM_SAMPLES=150,
+                EVOLUTION_DATA_NUM_SAMPLES=200
+            )
+            
         return attack
     
     if attack_string == "GreedyHillClimb":
@@ -257,14 +312,12 @@ def load_attack(
                 epsilon=epsilon,
                 seed=seed,
                 task=dataset.task,
-                num_climbs=4,
-                num_derections=4,
+                num_climbs=5,
+                num_derections=5,
                 max_trys=1,
                 step_len=0.001,
                 proba_numeric=0.7,
-                num_samples_explainer=10
             )
-            return attack
         else:
             attack = GreedyHillClimb(
                 dataset=dataset,
@@ -380,7 +433,8 @@ def smoke_test(run_func:Callable, datasets:dict[str,Type[BaseDataset]],metrics:d
                 metric=metrics["L2"](),
                 seed=42,
                 num_samples=num_samples,
-                train_samples=num_samples
+                train_samples=num_samples,
+                smoke_test=True
             )
             # save results
             timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")

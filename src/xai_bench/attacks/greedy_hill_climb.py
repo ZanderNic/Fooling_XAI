@@ -1,10 +1,8 @@
 # std lib imports 
-from typing import Literal
-import time
+from typing import Literal, Optional
 
 # 3 party imports
 import numpy as np
-import pandas as pd
 
 # projekt imports
 from xai_bench.base import BaseAttack, BaseDataset, BaseModel, BaseExplainer
@@ -64,7 +62,7 @@ class GreedyHillClimb(BaseAttack):
                 Probability that a sampled candidate move modifies a numerical feature.
                 Otherwise a categorical feature is modified.
 
-            seed : int | None, default=None
+            seed : Optional[int], default=None
                 Random seed for reproducibility. If None, a random seed is used.
 
             task : {"classification", "regression"}, default="classification"
@@ -84,7 +82,7 @@ class GreedyHillClimb(BaseAttack):
         step_len: float = 0.001,
         num_samples_explainer: int = 100,
         proba_numeric: float = 0.7,
-        seed: int = None,
+        seed: Optional[int] = None,
         task: Literal["classification", "regression"] = "classification",
     ):
         super().__init__(model,task=task, epsilon=epsilon, stats=[self, "GreedyHillClimb"],dataset=dataset)
@@ -152,7 +150,7 @@ class GreedyHillClimb(BaseAttack):
             x : np.ndarray
                 Input sample of shape (d,) in model input space.
 
-            num_directions : int | None, default=None
+            num_directions : Optional[int], default=None
                 Number of candidate perturbations to generate. If None, `self.num_derections`
                 is used.
 
@@ -339,8 +337,8 @@ class GreedyHillClimb(BaseAttack):
     def _trace_generate(
         self,
         x: np.ndarray,
-        max_steps: int | None = None,
-        num_directions: int | None = None,
+        max_steps: Optional[int] = None,
+        num_directions: Optional[int] = None,
         keep_top_k: int = 15,
     ) -> tuple[np.ndarray, dict]:
         """
