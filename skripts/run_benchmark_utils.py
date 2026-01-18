@@ -88,7 +88,8 @@ def load_explainer(
         from xai_bench.explainer.shap_explainer import ShapAdapter
         return ShapAdapter(
             dataset = dataset,
-            background_size= 1500,
+            background_size= 200,
+            num_samples= 1500,
             random_state= seed
         )
 
