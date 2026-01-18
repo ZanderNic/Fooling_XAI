@@ -127,7 +127,8 @@ def manipulation_loss(
 
     def normalize(x):
         s = np.sum(np.abs(x), axis=-1, keepdims=True)
-        return x / s if np.all(s > 0) else x
+        s = np.where(s == 0, np.array([1]), s)
+        return x / s
 
     # produce distance metric in [0, 1]
     explanation_distance = distance_fn(
