@@ -107,8 +107,8 @@ def load_attack(
         Instantiate and return an attack according to the selected attack string.
     """
     assert dataset.task is not None, "Dataset problem .()"
-
-     if attack_string == "RandomWalkAttack":
+    
+    if attack_string == "RandomWalkAttack":
         from xai_bench.attacks.random_walk_attack import RandomWalkAttack
         if smoke_test:
             attack = RandomWalkAttack(
