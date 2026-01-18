@@ -224,6 +224,9 @@ __marimo__/
 # Prisoners
 !compas_recidivism_racial_bias
 
+# Nursery
+!nursery.csv
+
 # Housing Price Regression
 !housing.csv
 !housing_small.csv
