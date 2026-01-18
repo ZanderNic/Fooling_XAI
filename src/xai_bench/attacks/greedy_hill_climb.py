@@ -1,10 +1,8 @@
 # std lib imports 
-from typing import Literal
-import time
+from typing import Literal, Optional
 
 # 3 party imports
 import numpy as np
-import pandas as pd
 
 # projekt imports
 from xai_bench.base import BaseAttack, BaseDataset, BaseModel, BaseExplainer
@@ -84,7 +82,7 @@ class GreedyHillClimb(BaseAttack):
         step_len: float = 0.001,
         num_samples_explainer: float = 100,
         proba_numeric: float = 0.7,
-        seed: int = None,
+        seed: Optional[int] = None,
         task: Literal["classification", "regression"] = "classification",
     ):
         super().__init__(model,task=task, epsilon=epsilon, stats=[self, "GreedyHillClimb"],dataset=dataset)

@@ -70,7 +70,7 @@ class ShapAdapter(BaseExplainer):
     def explain(
         self, 
         X: np.ndarray,
-        num_samples: int = None
+        num_samples: Optional[int] = None
     ) -> np.ndarray:
         """
         Compute a SHAP explanation and aggregate it according to the dataset's feature mapping.
@@ -90,6 +90,7 @@ class ShapAdapter(BaseExplainer):
         self.stats("explain",X)
 
         # produce explanations
+        assert self._explainer is not None, "Has to have explainer"
         shap_values = self._explainer.shap_values(
             X,
             nsamples=self.num_samples if num_samples is None else num_samples,
@@ -99,6 +100,7 @@ class ShapAdapter(BaseExplainer):
         shap_values = np.asarray(shap_values)
 
         # construct explanation object for compatibility with the dataset method
+        assert self.features is not None, "Has to have features"
         explanation_object = Explanation(
             values=shap_values,
             feature_names=self.features.feature_names_model
@@ -124,6 +126,7 @@ class ShapAdapter(BaseExplainer):
                 if self._background is None or self.model is None:
                     raise RuntimeError('ShapAdapter must be fitted before creating thread-local explainers')
                 def model_pred(X):
+                    assert self.model is not None," Has to have model"
                     if self.model.task == 'classification':
                         probs = self.model.predict_proba(np.asarray(X, dtype=float))
                         return probs.max(axis=1)

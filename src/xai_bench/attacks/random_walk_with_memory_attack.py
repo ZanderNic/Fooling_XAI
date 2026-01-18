@@ -1,14 +1,11 @@
 # std lib imports 
-from typing import Literal
-import time
+from typing import Literal, Optional
 
 # 3 party imports
 import numpy as np
-import pandas as pd
 
 # projekt imports
-from xai_bench.base import BaseAttack, BaseDataset, BaseModel, BaseExplainer
-from xai_bench.metrics.base_metric import BaseMetric
+from xai_bench.base import BaseAttack
 
 
 class RandomWalkWithMemoryAttack(BaseAttack):
@@ -70,7 +67,7 @@ class RandomWalkWithMemoryAttack(BaseAttack):
         num_steps: int = 100,
         step_len: float = 0.01,
         num_samples_explainer: int = 100,
-        seed: int = None,
+        seed: Optional[int] = None,
         task: Literal["classification", "regression"] = "classification",
     ):
         super().__init__(model=model, task=task, epsilon=epsilon, stats=[self, "RandomWalkAttack"], dataset=dataset)
@@ -82,6 +79,7 @@ class RandomWalkWithMemoryAttack(BaseAttack):
         self.step_len = step_len
         self.num_samples_explainer = num_samples_explainer
         
+        assert self.dataset.features
         self.protected_features = self.dataset.categorical_features
         self.cols = list(self.dataset.features.feature_names_model)
         self.col2idx = {c: i for i, c in enumerate(self.cols)}
