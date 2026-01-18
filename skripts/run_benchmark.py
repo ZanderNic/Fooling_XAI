@@ -34,6 +34,7 @@ from xai_bench.datasets.heart_dataset import HeartDataset
 from xai_bench.datasets.prisoners import PrisoneresDataset
 from xai_bench.datasets.housing import HousingDataset
 from xai_bench.datasets.covtype_forest import ForestDataset
+from xai_bench.datasets.nursery import NurseryDataset
 
 # metrics
 from xai_bench.metrics.cosine_metric import CosineMetric
@@ -62,7 +63,8 @@ DATASETS = {
     "housing": HousingDataset,
     "credit": CreditDataset,
     "prisoners": PrisoneresDataset,
-    "forest": ForestDataset
+    "forest": ForestDataset,
+    "nursery": NurseryDataset
 }
 
 METRICS = {
