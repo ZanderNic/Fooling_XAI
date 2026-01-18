@@ -318,6 +318,7 @@ def load_attack(
                 step_len=0.001,
                 proba_numeric=0.7,
             )
+            return attack
         else:
             attack = GreedyHillClimb(
                 dataset=dataset,

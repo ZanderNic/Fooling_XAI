@@ -310,7 +310,7 @@ class GreedyHillClimb(BaseAttack):
             for _ in range(self.num_climbs):
                 candidates = np.asarray(self._sample_directions(current_x, num_directions=self.num_derections))
 
-                cand_exps = self.explainer.explain_parallel(candidates, num_samples=self.num_samples_explainer, num_workers= 4) 
+                cand_exps = self.explainer.explain_parallel(candidates, num_samples=self.num_samples_explainer, n_workers= 4) 
                 x_rep = np.broadcast_to(x_exp, (cand_exps.shape[0], x_exp.shape[-1]))       
                 scores = np.asarray(self.metric.compute(cand_exps, x_rep)).reshape(-1)      
                 order = np.argsort(scores)[::-1]

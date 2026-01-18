@@ -132,13 +132,10 @@ class TrainLookupAttack(BaseAttack):
         exp_x = self.explainer.explain(x_2d, self.num_samples_explainer)
         
         candidates_array = candidates.to_numpy()
+        exp_candidates = self.explainer.explain_parallel(candidates, num_samples=self.num_samples_explainer, n_workers= 4) 
 
-        exp_candidates = np.array([
-            self.explainer.explain(candidates_array[i].reshape(1, -1), self.num_samples_explainer)
-            for i in range(len(candidates_array))
-        ])
 
-        scores = self.metric.compute(np.repeat(exp_x, len(candidates), axis=0), exp_candidates)
+        scores = self.metric.compute(np.repeat(exp_x, len(exp_candidates), axis=0), exp_candidates)
 
         best_idx = np.argmax(scores)
         best_candidate = candidates_array[best_idx]
