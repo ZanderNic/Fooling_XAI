@@ -170,6 +170,7 @@ class ShapAdapter(BaseExplainer):
         """
         assert self.model is not None, "Model not fitted"
 
+        self.stats("explain",X)
         X = np.asarray(X, dtype=float)
         if X.ndim == 1:
             X = X.reshape(1, -1)

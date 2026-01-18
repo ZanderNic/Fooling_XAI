@@ -80,7 +80,7 @@ def load_explainer(
         from xai_bench.explainer.lime_explainer import LimeTabularAdapter
         return LimeTabularAdapter(
             dataset = dataset,
-            num_samples = 5000,
+            num_samples = 1500,
             random_state= seed
         )
 
@@ -88,7 +88,7 @@ def load_explainer(
         from xai_bench.explainer.shap_explainer import ShapAdapter
         return ShapAdapter(
             dataset = dataset,
-            background_size= 5000,
+            background_size= 1500,
             random_state= seed
         )
 
@@ -227,7 +227,7 @@ def load_attack(
 
     if attack_string == "ColumnSwitchAttack":
         from xai_bench.attacks.switch_column_attack import ColumnSwitchAttack
-        if smoke_test:
+        if False:
             assert dataset.numerical_features is not None, "Has to have num features"
             attack =  ColumnSwitchAttack(
                 model=model,
