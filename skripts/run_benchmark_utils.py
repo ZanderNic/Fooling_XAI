@@ -104,7 +104,8 @@ def load_attack(
     metric: BaseMetric,
     seed: int,
     epsilon: float,
-    smoke_test: bool = False
+    smoke_test: bool = False,
+    max_tries:int=200
 ) -> BaseAttack:
     """
         Instantiate and return an attack according to the selected attack string.
@@ -251,7 +252,7 @@ def load_attack(
                 explainer=explainer,
                 epsilon=epsilon,
                 n_switches=int(len(dataset.features.feature_names_model)*0.75),
-                max_tries=200,
+                max_tries=max_tries,
                 numerical_only=False
             )
         

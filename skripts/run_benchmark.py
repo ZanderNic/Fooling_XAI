@@ -90,7 +90,8 @@ def run(
     num_samples: int = 1000,
     epsilon: float = 0.05,
     train_samples: Optional[int]=None,
-    smoke_test:bool=False
+    smoke_test:bool=False,
+    max_tries:int=200,
 ):
     """ """
 
@@ -152,7 +153,8 @@ def run(
             metric=metric,
             seed=seed,
             epsilon=epsilon,
-            smoke_test=smoke_test
+            smoke_test=smoke_test,
+            max_tries=max_tries
         )
     console.print(f"{RUN_TEXT} Loaded Attack")
     StatCollector.change_context("generate_attack",model,explainer,attack)
@@ -264,6 +266,12 @@ if __name__ == "__main__":
         action='store_true',
         help= "Run a smoke test over all available datatsets/attacks/explainers/metrics and save overview result. Will ignore all other parameters."
     )
+    parser.add_argument(
+        "--max_tries",
+        type=int,
+        default=200,
+        help="[CSA] Max iterations to run.",
+    )
 
     args = parser.parse_args()
     if args.smoke_test:
@@ -283,6 +291,7 @@ if __name__ == "__main__":
             metric=METRICS["L2"](),
             seed=args.seed,
             num_samples=args.num_samples,
+            max_tries=args.max_tries,
         )
 
         results_dir = Path(Path(__file__).parent.parent/"results")
