@@ -89,7 +89,7 @@ def load_explainer(
         return ShapAdapter(
             dataset = dataset,
             background_size= 50,
-            num_samples= 1000,
+            num_samples= 500,
             random_state= seed
         )
 
@@ -331,7 +331,7 @@ def load_attack(
                 seed=seed,
                 task=dataset.task,
                 num_climbs=30,
-                num_derections=40,
+                num_derections=20,
                 max_trys=1,
                 num_samples_explainer= 100,
                 step_len=0.001,
