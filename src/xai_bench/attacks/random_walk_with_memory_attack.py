@@ -65,7 +65,7 @@ class RandomWalkWithMemoryAttack(BaseAttack):
         epsilon: float = 0.05,
         num_runs: int = 10,
         num_steps: int = 100,
-        step_len: float = 0.01,
+        step_len: float = 0.1,
         num_samples_explainer: int = 100,
         seed: Optional[int] = None,
         task: Literal["classification", "regression"] = "classification",

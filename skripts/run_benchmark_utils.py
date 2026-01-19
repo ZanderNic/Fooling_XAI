@@ -80,7 +80,7 @@ def load_explainer(
         from xai_bench.explainer.lime_explainer import LimeTabularAdapter
         return LimeTabularAdapter(
             dataset = dataset,
-            num_samples = 1500,
+            num_samples = 1000,
             random_state= seed
         )
 
@@ -88,7 +88,8 @@ def load_explainer(
         from xai_bench.explainer.shap_explainer import ShapAdapter
         return ShapAdapter(
             dataset = dataset,
-            background_size= 1500,
+            background_size=50,
+            num_samples=1000,
             random_state= seed
         )
 
@@ -161,8 +162,8 @@ def load_attack(
                 epsilon=epsilon,
                 seed=seed,
                 task=dataset.task,
-                num_runs=10,
-                num_steps=100
+                num_runs=5,
+                num_steps=20
             )
         
         attack.fit()
@@ -220,7 +221,7 @@ def load_attack(
                 epsilon=epsilon,
                 seed=seed,
                 task=dataset.task,
-                max_candidates=100
+                max_candidates=1000
             )
         attack.fit()
         return attack
