@@ -81,7 +81,6 @@ def load_explainer(
         return LimeTabularAdapter(
             dataset = dataset,
             num_samples = 1000,
-            num_samples = 1000,
             random_state= seed
         )
 
