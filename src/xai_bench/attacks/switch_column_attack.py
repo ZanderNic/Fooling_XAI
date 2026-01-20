@@ -126,6 +126,9 @@ class ColumnSwitchAttack(BaseAttack):
                     )
             best_scores = np.zeros((len(X)))
             best_combis = [None for _ in range(len(X))]
+            # calcualte real X exp once cause it will stay the same
+            if isinstance(self.explainer,(ShapAdapter,LimeTabularAdapter)):
+                X_exp = self.explainer.explain_parallel(X,int(self.explainer.num_samples/10))
             for _ in range(self.max_tries):
                 combis = np.stack([np.random.choice(
                             self.feature_indexes, size=(self.n_switches,), replace=False
@@ -133,7 +136,7 @@ class ColumnSwitchAttack(BaseAttack):
                 X_tmp = np.stack([self._switch_columns(x, combi.tolist()) for x,combi in zip(X,combis)])
                 Bs, _ = self.is_attack_valid(X,X_tmp)
                 if isinstance(self.explainer,(ShapAdapter,LimeTabularAdapter)):
-                    X_exp, X_tmp_exp = self.explainer.explain_parallel(X,int(self.explainer.num_samples/10)), self.explainer.explain_parallel(X_tmp,int(self.explainer.num_samples/10))
+                    X_tmp_exp = self.explainer.explain_parallel(X_tmp,int(self.explainer.num_samples/10))
                 scores = self.metric.compute(X_exp,X_tmp_exp)
                 save_mask = Bs & (scores>best_scores)
                 best_combis = [combi if b else best for b, combi, best in zip(save_mask,combis,best_combis)]

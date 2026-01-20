@@ -127,7 +127,8 @@ def manipulation_loss(
 
     def normalize(x):
         s = np.sum(np.abs(x), axis=-1, keepdims=True)
-        return x / s if np.all(s > 0) else x
+        s = np.where(s == 0, np.array([1]), s)
+        return x / s
 
     # produce distance metric in [0, 1]
     explanation_distance = distance_fn(
@@ -784,7 +785,7 @@ def crossover_parent_stds(
         [-dominant_fitness_metrics[:2].sum(), -recessive_fitness_metrics[:2].sum()]
     )
     fitness_ratio = np.abs(fitness_softmax[0] - fitness_softmax[1])
-    dominant_feature_proportion = max(fitness_ratio, -fitness_ratio + 1)  # opposite proportion
+    dominant_feature_proportion = 0.5 * fitness_ratio + 0.5
     dominant_feature_amount = max(
         1, int(dominant_feature_proportion * n_features)
     )
