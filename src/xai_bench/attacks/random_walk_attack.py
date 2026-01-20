@@ -63,7 +63,7 @@ class RandomWalkAttack(BaseAttack):
         metric : BaseMetric,
         epsilon: float = 0.05,
         num_steps: int = 100,
-        step_len: float = 0.01,
+        step_len: float = 0.1,
         num_samples_explainer: float = 100,
         seed: Optional[int] = None,
         task: Literal["classification", "regression"] = "classification",
