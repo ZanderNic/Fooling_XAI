@@ -81,7 +81,7 @@ class BaseAttack(ABC):
 
         if self.task=="regression":
             # scale to [0-1] in case of regression
-            p_dist = (p_dist-self.dataset.y_range["max"])/(self.dataset.y_range["max"]/self.dataset.y_range["min"])
+            p_dist = p_dist/(self.dataset.y_range["max"]-self.dataset.y_range["min"])
         # epsilon
         if epsilon is None:
             assert self.epsilon is not None, "At least one epsilon must be present"
