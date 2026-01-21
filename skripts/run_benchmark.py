@@ -76,7 +76,7 @@ METRICS = {
 }
 
 MODELS = ["CNN1D", "MLP", "RF"]
-ATTACKS = ["RandomWalkAttack", "RandomWalkWithMemoryAttack", "MonteCarloAttack", "TrainLookupAttack", "ColumnSwitchAttack", "DataPoisoningAttack", "GreedyHillClimb"]
+ATTACKS = ["RandomWalkAttack", "RandomWalkWithMemoryAttack", "MonteCarloAttack", "TrainLookupAttack", "ColumnSwitchAttack", "DataPoisoningAttack", "GreedyHillClimb", "DummyAttack"]
 EXPLAINER = ["Shap", "Lime"]
 
 
