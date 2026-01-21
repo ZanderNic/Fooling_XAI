@@ -20,7 +20,7 @@
 
 ---
 
-## ✅ What it does
+## :white_check_mark: What it does
 
 Given a configuration `(dataset, model, explainer, attack, metric)` the benchmark:
 
@@ -35,7 +35,7 @@ Given a configuration `(dataset, model, explainer, attack, metric)` the benchmar
   All attacks in this repository are **black-box**, i.e. they only require access to model outputs (`predict`, `predict_proba`) and do **not** rely on gradients or other model internals.
 
 
-## 🧨 Attacks (included)
+## :bomb: Attacks (included)
 
 - **RandomWalk**
 - **RandomWalkWithMemory**
@@ -46,13 +46,13 @@ Given a configuration `(dataset, model, explainer, attack, metric)` the benchmar
 - **GreedyHillClimb**
 
 
-## 🔍 Explainers
+## :mag: Explainers
 
 - **LIME Tabular**
 - **SHAP KernelExplainer**
 
 
-## 📏 Metrics (explanation drift)
+## :straight_ruler: Metrics (explanation drift)
 
 - **L2**
 - **Cosine**
@@ -61,7 +61,7 @@ Given a configuration `(dataset, model, explainer, attack, metric)` the benchmar
 - **Distortion** (L1 + Kendall-Tau)
 
 
-## 🚀 Installation (fast & simple)
+## :rocket: Installation (fast & simple)
 
 It is recommended to install the package into a clean virtual environment:
 
@@ -80,7 +80,7 @@ Use the editable mode (`-e`) to be able to modify the source code without reinst
 After the installation is finished, benchmark experiments can be run right away.
 
 
-## ▶️ Run a benchmark
+## :arrow_forward: Run a benchmark
 To start an experiment, run the benchmark script with a specific configuration
 (dataset, model, attack, explainer). The script will:
 
@@ -114,7 +114,7 @@ After running the command, the benchmark prints the progress and saves all resul
 python skripts/run_benchmark.py credit RF GreedyHillClimb Lime --seed 42 --num_samples 500
 ```
 
-## ▶️ Run a Smoketest
+## :arrow_forward: Run a Smoketest
 To just check if everything is working, run a test like:
 
 ```bash
@@ -124,7 +124,7 @@ python skripts/run_benchmark.py -s
 When prompted either press `Enter` to select all or only specific parts that should be included in the smoke test. Then, all of the selected combinations will be run and a report in `results/smoketest` is created.
 
 
-## 🔧 Extending 
+## :wrench: Extending 
 
 This repository is designed to be extended easily via inheritance:
 
