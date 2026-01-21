@@ -64,7 +64,7 @@ class ShapAdapter(BaseExplainer):
             def model_pred(X):
                 return np.asarray(model.predict_scalar(np.asarray(X, dtype=float)), dtype=float)
 
-        self._explainer = shap.KernelExplainer(model_pred, self._background)
+        self._explainer = shap.KernelExplainer(model_pred, self._background, seed=self.random_state)
 
 
     def explain(
@@ -131,7 +131,7 @@ class ShapAdapter(BaseExplainer):
                         return probs.max(axis=1)
                     else:
                         return np.asarray(self.model.predict_scalar(np.asarray(X, dtype=float)), dtype=float)
-                local.explainer = shap.KernelExplainer(model_pred, self._background)
+                local.explainer = shap.KernelExplainer(model_pred, self._background, seed=self.random_state)
             return local.explainer
 
         return get_explainer
