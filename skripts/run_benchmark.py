@@ -6,7 +6,7 @@ from rich import print as rich_print
 try:
     import xai_bench  # noqa: F401
 except ModuleNotFoundError:
-    # in case module not correcltyloaded hardcode path
+    # in case module not correctly loaded, hardcode path
     rich_print(
         f"[bold][red]xai_bench not found![/bold] Adding [italic #222222]{(Path(__file__).parent.parent / 'src').__str__()}[/italic #222222] into python path.[/]"
     )
@@ -23,7 +23,7 @@ from typing import Literal, Optional
 import numpy as np
 
 
-# projekt imports
+# project imports
 from xai_bench.console import console, RUN_TEXT, TC
 from xai_bench.base import BaseDataset, BaseMetric
 from xai_bench.stat_collector import StatCollector
@@ -76,7 +76,7 @@ METRICS = {
 }
 
 MODELS = ["CNN1D", "MLP", "RF"]
-ATTACKS = ["RandomWalkAttack", "RandomWalkWithMemoryAttack", "MonteCarloAttack", "TrainLookupAttack", "ColumnSwitchAttack", "DataPoisoningAttack", "GreedyHillClimb"]
+ATTACKS = ["RandomWalkAttack", "RandomWalkWithMemoryAttack", "MonteCarloAttack", "TrainLookupAttack", "ColumnSwitchAttack", "DataPoisoningAttack", "GreedyHillClimb", "DummyAttack"]
 EXPLAINER = ["Shap", "Lime"]
 
 
@@ -117,7 +117,7 @@ def run(
         model.fit(dataset.X_train_scaled.values, dataset.y_train.values)
     console.print(f"{RUN_TEXT} Fitted Model ")
 
-    # predict on test and calucalte accuracy
+    # predict on test and calculate accuracy
     StatCollector.change_context("score_model",model)
     assert dataset.y_test is not None and dataset.X_test_scaled is not None, (
         "Something went wrong with the dataset"

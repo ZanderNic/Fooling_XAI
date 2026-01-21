@@ -112,6 +112,28 @@ def load_attack(
     """
     assert dataset.task is not None, "Dataset problem .()"
     
+
+    if attack_string == "DummyAttack":
+        from xai_bench.attacks.dummy_attack import DummyAttack
+        if smoke_test:
+            attack = DummyAttack(
+                dataset=dataset,
+                model=model,
+                explainer=explainer,
+                metric=metric,
+                epsilon=epsilon
+            )
+        else:
+            attack = DummyAttack(
+                dataset=dataset,
+                model=model,
+                explainer=explainer,
+                metric=metric,
+                epsilon=epsilon
+            )
+
+        attack.fit()
+        return attack
     if attack_string == "RandomWalkAttack":
         from xai_bench.attacks.random_walk_attack import RandomWalkAttack
         if smoke_test:
@@ -134,7 +156,7 @@ def load_attack(
                 epsilon=epsilon,
                 seed=seed,
                 task=dataset.task,
-                num_steps=100
+                num_steps=50
             )
 
         attack.fit()
@@ -163,8 +185,8 @@ def load_attack(
                 epsilon=epsilon,
                 seed=seed,
                 task=dataset.task,
-                num_runs=10,
-                num_steps=100
+                num_runs=3,
+                num_steps=20
             )
         
         attack.fit()
@@ -193,8 +215,10 @@ def load_attack(
                 epsilon=epsilon,
                 seed=seed,
                 task=dataset.task,
-                num_candidates=100,
-                max_distance=0.1
+                num_candidates=50,
+                max_distance=0.1,
+                p_numerical=0.6,
+                p_categorical=0.2
             )
         
         attack.fit()
@@ -222,7 +246,9 @@ def load_attack(
                 epsilon=epsilon,
                 seed=seed,
                 task=dataset.task,
-                max_candidates=100
+                max_candidates=100,
+                max_distance=0.3,
+                max_cat_ratio=0.3
             )
         attack.fit()
         return attack
