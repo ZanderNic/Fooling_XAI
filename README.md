@@ -35,32 +35,6 @@ Given a configuration `(dataset, model, explainer, attack, metric)` the benchmar
   All attacks in this repository are **black-box**, i.e. they only require access to model outputs (`predict`, `predict_proba`) and do **not** rely on gradients or other model internals.
 
 
-## :bomb: Attacks (included)
-
-- **RandomWalk**
-- **RandomWalkWithMemory**
-- **MonteCarlo**
-- **TrainLookup**
-- **ColumnSwitch**
-- **DataPoisoning**
-- **GreedyHillClimb**
-
-
-## :mag: Explainers
-
-- **LIME Tabular**
-- **SHAP KernelExplainer**
-
-
-## :straight_ruler: Metrics (explanation drift)
-
-- **L2**
-- **Cosine**
-- **Spearman**
-- **Kendall-Tau**
-- **Distortion** (L1 + Kendall-Tau)
-
-
 ## :rocket: Installation (fast & simple)
 
 It is recommended to install the package into a clean virtual environment:
@@ -123,6 +97,32 @@ python skripts/run_benchmark.py -s
 
 When prompted either press `Enter` to select all or only specific parts that should be included in the smoke test. Then, all of the selected combinations will be run and a report in `results/smoketest` is created.
 
+
+## :bomb: Attacks (included)
+
+- **RandomWalk**
+- **RandomWalkWithMemory**
+- **MonteCarlo**
+- **TrainLookup**
+- **ColumnSwitch**
+- **DataPoisoning**
+- **GreedyHillClimb**
+
+
+## :mag: Explainers
+
+- **LIME Tabular**
+- **SHAP KernelExplainer**
+
+
+## :straight_ruler: Metrics (explanation drift)
+
+- **L2**
+- **Cosine**
+- **Spearman**
+- **Kendall-Tau**
+- **Distortion** (L1 + Kendall-Tau)
+  
 
 ## :wrench: Extending 
 
