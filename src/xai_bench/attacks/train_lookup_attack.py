@@ -118,8 +118,6 @@ class TrainLookupAttack(BaseAttack):
         assert self.X_train is not None
         candidates = self.X_train.iloc[candidate_idx]
 
-
-        # really werid topyes here lol. Should be either nd+nd or df+df, not nd+series
         valid_mask, _ = self.is_attack_valid(
             X=np.repeat(x_2d, len(candidates), axis=0),
             X_adv=candidates,

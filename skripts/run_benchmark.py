@@ -6,7 +6,7 @@ from rich import print as rich_print
 try:
     import xai_bench  # noqa: F401
 except ModuleNotFoundError:
-    # in case module not correcltyloaded hardcode path
+    # in case module not correctly loaded, hardcode path
     rich_print(
         f"[bold][red]xai_bench not found![/bold] Adding [italic #222222]{(Path(__file__).parent.parent / 'src').__str__()}[/italic #222222] into python path.[/]"
     )
@@ -23,7 +23,7 @@ from typing import Literal, Optional
 import numpy as np
 
 
-# projekt imports
+# project imports
 from xai_bench.console import console, RUN_TEXT, TC
 from xai_bench.base import BaseDataset, BaseMetric
 from xai_bench.stat_collector import StatCollector
@@ -90,7 +90,8 @@ def run(
     num_samples: int = 1000,
     epsilon: float = 0.05,
     train_samples: Optional[int]=None,
-    smoke_test:bool=False
+    smoke_test:bool=False,
+    max_tries:int=200,
 ):
     """ """
 
@@ -116,7 +117,7 @@ def run(
         model.fit(dataset.X_train_scaled.values, dataset.y_train.values)
     console.print(f"{RUN_TEXT} Fitted Model ")
 
-    # predict on test and calucalte accuracy
+    # predict on test and calculate accuracy
     StatCollector.change_context("score_model",model)
     assert dataset.y_test is not None and dataset.X_test_scaled is not None, (
         "Something went wrong with the dataset"
@@ -152,7 +153,8 @@ def run(
             metric=metric,
             seed=seed,
             epsilon=epsilon,
-            smoke_test=smoke_test
+            smoke_test=smoke_test,
+            max_tries=max_tries
         )
     console.print(f"{RUN_TEXT} Loaded Attack")
     StatCollector.change_context("generate_attack",model,explainer,attack)
@@ -264,6 +266,12 @@ if __name__ == "__main__":
         action='store_true',
         help= "Run a smoke test over all available datatsets/attacks/explainers/metrics and save overview result. Will ignore all other parameters."
     )
+    parser.add_argument(
+        "--max_tries",
+        type=int,
+        default=200,
+        help="[CSA] Max iterations to run.",
+    )
 
     args = parser.parse_args()
     if args.smoke_test:
@@ -283,6 +291,7 @@ if __name__ == "__main__":
             metric=METRICS["L2"](),
             seed=args.seed,
             num_samples=args.num_samples,
+            max_tries=args.max_tries,
         )
 
         results_dir = Path(Path(__file__).parent.parent/"results")

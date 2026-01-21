@@ -65,7 +65,7 @@ class RandomWalkWithMemoryAttack(BaseAttack):
         epsilon: float = 0.05,
         num_runs: int = 10,
         num_steps: int = 100,
-        step_len: float = 0.01,
+        step_len: float = 0.1,
         num_samples_explainer: int = 100,
         seed: Optional[int] = None,
         task: Literal["classification", "regression"] = "classification",
@@ -79,20 +79,21 @@ class RandomWalkWithMemoryAttack(BaseAttack):
         self.step_len = step_len
         self.num_samples_explainer = num_samples_explainer
         
-        assert self.dataset.features
-        self.protected_features = self.dataset.categorical_features
-        assert self.dataset.features
+        assert self.dataset.features is not None
         self.cols = list(self.dataset.features.feature_names_model)
         self.col2idx = {c: i for i, c in enumerate(self.cols)}
 
-        self.num_features = [f for f in (self.dataset.numerical_features or []) if f in self.col2idx]
-        self.cat_features = [f for f in (self.dataset.categorical_features or []) if f in self.col2idx]
+        self.n_numerical = len(self.dataset.numerical_features)
+        self.n_categorical = len(self.dataset.categorical_features)
 
-        self.ranges = getattr(self.dataset, "scaled_feature_ranges", None) or self.dataset.feature_ranges
-        self.cat_vals = getattr(self.dataset, "scaled_categorical_values", None) or getattr(self.dataset, "categorical_values", {})
+        self.numerical_features = self.dataset.numerical_features
+        self.categorical_features = self.dataset.categorical_features
+
+        self.ranges = self.dataset.scaled_feature_ranges 
+        self.feature_mapping = self.dataset.feature_mapping
 
         self.seed = seed
-        self.rng = np.random.default_rng(self.seed)                    
+        self.rng = np.random.default_rng(self.seed)                  
 
 
     def _step(self, x: np.ndarray) -> np.ndarray:
@@ -115,10 +116,10 @@ class RandomWalkWithMemoryAttack(BaseAttack):
         """
         x_adv = x.copy()
 
-        feat = self.rng.choice(self.cols)
-        idx = self.col2idx[feat]
+        if self.rng.random() < self.n_numerical / (self.n_numerical + self.n_categorical) or self.n_categorical == 0:
+            feat = self.rng.choice(self.numerical_features)
+            idx = self.col2idx[feat]
 
-        if feat in self.num_features:
             f_min, f_max = self.ranges[feat]
             span = f_max - f_min
 
@@ -131,22 +132,31 @@ class RandomWalkWithMemoryAttack(BaseAttack):
             x_candidate = x_adv.copy()
             x_candidate[idx] = new_val
 
-        elif feat in self.cat_features:
-            values = self.cat_vals.get(feat, None)
-            if values is None or len(values) <= 1:
+        else:
+            if self.n_categorical == 0:
+                return RuntimeError("Dataset has no features")
+            
+            feat = self.rng.choice(self.categorical_features)
+            cols = self.feature_mapping[feat]
+
+            idxs = [self.col2idx[c] for c in cols]
+
+            active = [i for i in idxs if x_adv[i] == 1]
+
+            if len(active) != 1:
                 return x_adv
 
-            current_val = x_adv[idx]
-            possible_vals = [v for v in values if v != current_val]
+            current_idx = active[0]
+            other_idxs = [i for i in idxs if i != current_idx]
 
-            if not possible_vals:
+            if not other_idxs:
                 return x_adv
+
+            new_idx = self.rng.choice(other_idxs)
 
             x_candidate = x_adv.copy()
-            x_candidate[idx] = self.rng.choice(possible_vals)
-
-        else:
-            return x_adv
+            x_candidate[current_idx] = 0.0
+            x_candidate[new_idx] = 1.0
 
         if self.is_attack_valid(x.reshape(1, -1), x_candidate.reshape(1, -1))[0]:
             return x_candidate
@@ -156,14 +166,14 @@ class RandomWalkWithMemoryAttack(BaseAttack):
 
     def fit(self) -> None:
         """
-            This needs to be def to make the base class happy :D 
+            Necessary for interface
         """
         pass 
 
 
     def _generate(self, x: np.ndarray) -> np.ndarray:
         """
-            Generate an adversarial sample using multiple random walk and memory to save the 
+            Generate an adversarial sample using multiple random walks and memory to save the 
             global best occuring instance that has the highest explanation difference.
 
             The method takes random steps from the origin `x` to create a pertubed sample 
