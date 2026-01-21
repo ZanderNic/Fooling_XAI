@@ -3,10 +3,10 @@
 <h4 align="center"><i>Black-box attacks on explanations (LIME / SHAP) under prediction constraints.</i></h4>
 
 <p align="center">
-    <img src="https://img.shields.io/badge/Black--Box%20Only-%E2%9C%85-brightgreen" alt="Black-box only" />
-    <img src="https://img.shields.io/badge/Explainers-LIME%20%7C%20SHAP-orange" alt="Explainers" />
-    <img src="https://img.shields.io/badge/Attacks-Hill%20Climb%20%7C%20Poisoning%20%7C%20Switching-blue" alt="Attacks" />
-    <img src="https://img.shields.io/badge/Models-MLP%20%7C%20CNN1D%20%7C%20RandomForest-black" alt="Models" />
+  <img src="https://img.shields.io/badge/Black--Box%20Only-Yes-brightgreen" alt="Black-box only" />
+  <img src="https://img.shields.io/badge/Explainers-LIME%20%7C%20SHAP-orange" alt="Explainers" />
+  <img src="https://img.shields.io/badge/Attacks-RandomWalk%20%7C%20RandomWalkWithMemory%20%7C%20MonteCarlo%20%7C%20TrainLookup%20%7C%20ColumnSwitch%20%7C%20DataPoisoning%20%7C%20GreedyHillClimb-blue" alt="Attacks" />
+  <img src="https://img.shields.io/badge/Models-MLP%20%7C%20CNN1D%20%7C%20RandomForest-black" alt="Models" />
 </p>
 
 ---
