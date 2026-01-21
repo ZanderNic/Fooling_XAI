@@ -63,6 +63,8 @@ class MonteCarloAttack(BaseAttack):
         epsilon: float = 0.05,
         num_candidates: int = 100,
         max_distance: float = 0.1,
+        p_numerical: float = 0.8,
+        p_categorical: float = 0.1,
         num_samples_explainer: int = 100,
         seed: Optional[int] = None,
         task: Literal["classification", "regression"] = "classification",
@@ -73,22 +75,25 @@ class MonteCarloAttack(BaseAttack):
         
         self.num_candidates = num_candidates
         self.max_distance = max_distance
+        self.p_numerical = p_numerical
+        self.p_categorical = p_categorical
         self.num_samples_explainer = num_samples_explainer
         
-        assert self.dataset.features
-        self.protected_features = self.dataset.categorical_features
-        assert self.dataset.features
+        assert self.dataset.features is not None
         self.cols = list(self.dataset.features.feature_names_model)
         self.col2idx = {c: i for i, c in enumerate(self.cols)}
 
-        self.num_features = [f for f in (self.dataset.numerical_features or []) if f in self.col2idx]
-        self.cat_features = [f for f in (self.dataset.categorical_features or []) if f in self.col2idx]
+        self.n_numerical = len(self.dataset.numerical_features)
+        self.n_categorical = len(self.dataset.categorical_features)
 
-        self.ranges = getattr(self.dataset, "scaled_feature_ranges", None) or self.dataset.feature_ranges
-        self.cat_vals = getattr(self.dataset, "scaled_categorical_values", None) or getattr(self.dataset, "categorical_values", {})
+        self.numerical_features = self.dataset.numerical_features
+        self.categorical_features = self.dataset.categorical_features
+
+        self.ranges = self.dataset.scaled_feature_ranges 
+        self.feature_mapping = self.dataset.feature_mapping
 
         self.seed = seed
-        self.rng = np.random.default_rng(self.seed)                         
+        self.rng = np.random.default_rng(self.seed)                       
 
 
     def _create_candidate(self, x: np.ndarray) -> np.ndarray:
@@ -111,32 +116,47 @@ class MonteCarloAttack(BaseAttack):
         """
         x_candidate = x.copy()
 
-        for feat in self.cols:
+        for feat in self.numerical_features:
+            if self.rng.random() > self.p_numerical:
+                continue
+
             idx = self.col2idx[feat]
 
-            if feat in self.num_features:
-                f_min, f_max = self.ranges[feat]
-                span = f_max - f_min
+            f_min, f_max = self.ranges[feat]
+            span = f_max - f_min
 
-                step = self.rng.uniform(
-                    -self.max_distance * span,
-                    self.max_distance * span
-                )
+            step = self.rng.uniform(
+                -self.max_distance * span,
+                self.max_distance * span
+            )
 
-                x_candidate[idx] = np.clip(
-                    x_candidate[idx] + step, f_min, f_max
-                )
+            x_candidate[idx] = np.clip(
+                x_candidate[idx] + step, f_min, f_max
+            )
 
-            elif feat in self.cat_features:
-                values = self.cat_vals.get(feat)
-                if values is None or len(values) <= 1:
-                    continue
+        for feat in self.categorical_features:
+            if self.rng.random() > self.p_categorical:
+                continue
 
-                current_val = x_candidate[idx]
-                possible_vals = [v for v in values if v != current_val]
+            cols = self.feature_mapping[feat]
 
-                if possible_vals:
-                    x_candidate[idx] = self.rng.choice(possible_vals)
+            idxs = [self.col2idx[c] for c in cols]
+
+            active = [i for i in idxs if x_candidate[i] == 1]
+
+            if len(active) != 1:
+                continue
+
+            current_idx = active[0]
+            other_idxs = [i for i in idxs if i != current_idx]
+
+            if not other_idxs:
+                continue
+
+            new_idx = self.rng.choice(other_idxs)
+
+            x_candidate[current_idx] = 0.0
+            x_candidate[new_idx] = 1.0
 
         if self.is_attack_valid(x.reshape(1, -1), x_candidate.reshape(1, -1))[0]:
             return x_candidate
@@ -146,7 +166,7 @@ class MonteCarloAttack(BaseAttack):
 
     def fit(self) -> None:
         """
-            This needs to be def to make the base class happy :D 
+            Necessary for interface
         """
         pass 
 
@@ -175,9 +195,6 @@ class MonteCarloAttack(BaseAttack):
 
         for _ in range(self.num_candidates):
             x_candidate = self._create_candidate(x)
-
-            if np.allclose(x_candidate, x):
-                continue
 
             cand_exp = self.explainer.explain(x_candidate.reshape(1, -1), self.num_samples_explainer)
 
