@@ -103,10 +103,20 @@ class GreedyHillClimb(BaseAttack):
         self.col2idx = {c: i for i, c in enumerate(self.cols)}
 
         self.num_features = [f for f in (self.dataset.numerical_features or []) if f in self.col2idx]
-        self.cat_features = [f for f in (self.dataset.categorical_features or []) if f in self.col2idx]
+
+        self.cat_features = []
+        for f in (self.dataset.categorical_features or []):
+            for c in getattr(self.dataset, "feature_mapping", {}).get(f, [f]):
+                if c in self.col2idx:
+                    self.cat_features.append(c)
+
+        self.cat_vals = getattr(self.dataset, "scaled_categorical_values", None) or getattr(self.dataset, "categorical_values", {})
+        for c in self.cat_features:
+            v = self.cat_vals.get(c, None)
+            if v is None or (isinstance(v, (list, np.ndarray)) and len(v) < 2):
+                self.cat_vals[c] = np.array([0.0, 1.0], dtype=float)
 
         self.ranges = getattr(self.dataset, "scaled_feature_ranges", None) or self.dataset.feature_ranges
-        self.cat_vals = getattr(self.dataset, "scaled_categorical_values", None) or getattr(self.dataset, "categorical_values", {})
 
         # for reproducability if seed is None np will take random seed 
         self.seed = seed
@@ -209,11 +219,18 @@ class GreedyHillClimb(BaseAttack):
                     f = self.rng.choice(self.cat_features)
                     idx = self.col2idx[f]
                     vals = self.cat_vals.get(f, None)
-                    if vals is not None and len(vals) > 1:
-                        cur = x_new[idx]
-                        cand = vals[vals != cur]
-                        if len(cand) > 0:
-                            x_new[idx] = self.rng.choice(cand)
+
+                    if vals is None:
+                        x_new[idx] = 1.0 - x_new[idx]
+                    else:
+                        vals = np.asarray(vals)
+                        if len(vals) == 2 and set(np.round(vals.astype(float), 6).tolist()) <= {0.0, 1.0}:
+                            x_new[idx] = 1.0 - x_new[idx]
+                        elif len(vals) > 1:
+                            cur = x_new[idx]
+                            cand = vals[vals != cur]
+                            if len(cand) > 0:
+                                x_new[idx] = float(self.rng.choice(cand))
 
             # Escape move (larger jump)
             else:
@@ -222,21 +239,18 @@ class GreedyHillClimb(BaseAttack):
                         f = self.rng.choice(self.cat_features)
                         idx = self.col2idx[f]
                         vals = self.cat_vals.get(f, None)
-                        if vals is not None and len(vals) > 1:
-                            cur = x_new[idx]
-                            cand = vals[vals != cur]
-                            if len(cand) > 0:
-                                x_new[idx] = self.rng.choice(cand)
 
-                        feats = self.rng.choice(self.num_features, size=2, replace=False)
-                        d = self.rng.normal(size=2)
-                        d /= (np.linalg.norm(d) + 1e-12)
-
-                        for j, f2 in enumerate(feats):
-                            idx2 = self.col2idx[f2]
-                            low, high = self.ranges[f2]
-                            step = self.step_len * (high - low) * d[j]
-                            x_new[idx2] = np.clip(x_new[idx2] + step, low, high)
+                        if vals is None:
+                            x_new[idx] = 1.0 - x_new[idx]
+                        else:
+                            vals = np.asarray(vals)
+                            if len(vals) == 2 and set(np.round(vals.astype(float), 6).tolist()) <= {0.0, 1.0}:
+                                x_new[idx] = 1.0 - x_new[idx]
+                            elif len(vals) > 1:
+                                cur = x_new[idx]
+                                cand = vals[vals != cur]
+                                if len(cand) > 0:
+                                    x_new[idx] = float(self.rng.choice(cand))
                     else:
                         k = int(self.rng.integers(6, 11)) 
                         k = min(k, len(self.num_features))
@@ -255,11 +269,18 @@ class GreedyHillClimb(BaseAttack):
                     f = self.rng.choice(self.cat_features)
                     idx = self.col2idx[f]
                     vals = self.cat_vals.get(f, None)
-                    if vals is not None and len(vals) > 1:
-                        cur = x_new[idx]
-                        cand = vals[vals != cur]
-                        if len(cand) > 0:
-                            x_new[idx] = self.rng.choice(cand)
+
+                    if vals is None:
+                        x_new[idx] = 1.0 - x_new[idx]
+                    else:
+                        vals = np.asarray(vals)
+                        if len(vals) == 2 and set(np.round(vals.astype(float), 6).tolist()) <= {0.0, 1.0}:
+                            x_new[idx] = 1.0 - x_new[idx]
+                        elif len(vals) > 1:
+                            cur = x_new[idx]
+                            cand = vals[vals != cur]
+                            if len(cand) > 0:
+                                x_new[idx] = float(self.rng.choice(cand))
 
             moves.append(x_new)
 
@@ -383,9 +404,6 @@ class GreedyHillClimb(BaseAttack):
         """
         import time
 
-        print("[WARNING] THIS FUNKTION IS ONLY FOR VISUALISATION")
-
-
         t0 = time.perf_counter()
         max_steps = self.num_climbs if max_steps is None else int(max_steps)
         num_directions = self.num_derections if num_directions is None else int(num_directions)
@@ -396,48 +414,79 @@ class GreedyHillClimb(BaseAttack):
         exp_time = 0.0
         t_exp0 = time.perf_counter()
         x_exp = self.explainer.explain(x0.reshape(1, -1))
+        x_exp = np.asarray(x_exp)
+        if x_exp.ndim == 1:
+            x_exp = x_exp.reshape(1, -1)
         exp_time += time.perf_counter() - t_exp0
 
         path = [current_x.copy()]
-        best_scores = []
-        picked_idx = []
-        cand_x_hist = []
-        cand_s_hist = []
+        best_scores: list[float] = []
+        picked_idx: list[int] = []
+        cand_x_hist: list[np.ndarray] = []
+        cand_s_hist: list[np.ndarray] = []
+
+        x0_2d = x0.reshape(1, -1)
 
         for _ in range(max_steps):
-            if not self.is_attack_valid(current_x.reshape(1, -1), x0.reshape(1, -1), self.epsilon)[0]:
+            if not self.is_attack_valid(current_x.reshape(1, -1), x0_2d, self.epsilon)[0]:
                 break
 
             candidates = self._sample_directions(current_x, num_directions=num_directions)
-            C = np.asarray(candidates, dtype=float)  # (m, d)
+            C = np.asarray(candidates, dtype=float)
+            m = C.shape[0]
+            if m == 0:
+                break
 
             t_exp0 = time.perf_counter()
-            E_c = self.explainer.explain(C)
+            E_c = self.explainer.explain_parallel(C, num_samples=self.num_samples_explainer)
+            E_c = np.asarray(E_c)
             exp_time += time.perf_counter() - t_exp0
 
-            # metric.compute may return (m,) or (m,1) depending on implementation
-            s = self.metric.compute(E_c, np.repeat(x_exp, repeats=len(C), axis=0))
-            s = np.asarray(s).reshape(-1)
+            if E_c.ndim == 1:
+                E_c = E_c.reshape(1, -1)
 
-            j_full = int(np.argmax(s))
-            best_scores.append(float(s[j_full]))
+            x_rep = np.repeat(x_exp, repeats=m, axis=0)
 
-            if keep_top_k is not None and keep_top_k > 0 and len(s) > keep_top_k:
-                top_idx = np.argsort(s)[-keep_top_k:]
+            s = self.metric.compute(E_c, x_rep)
+            s = np.asarray(s)
+
+            if s.ndim == 2 and s.shape[1] == 1:
+                s = s[:, 0]
+            elif s.ndim == 2 and s.shape[0] == 1 and s.shape[1] == m:
+                s = s[0, :]
+            elif s.ndim > 1:
+                s = s.reshape(-1)
+
+            if s.shape[0] != m:
+                break
+
+            valid = np.zeros(m, dtype=bool)
+            for i in range(m):
+                valid[i] = self.is_attack_valid(C[i:i+1], x0_2d, self.epsilon)[0]
+
+            if not np.any(valid):
+                break
+
+            s_valid = s.astype(float).copy()
+            s_valid[~valid] = -np.inf
+
+            j_full = int(np.argmax(s_valid))
+            best_scores.append(float(s_valid[j_full]))
+
+            if keep_top_k is not None and keep_top_k > 0 and len(s_valid) > keep_top_k:
+                top_idx = np.argsort(s_valid)[-keep_top_k:]
                 C_store = C[top_idx]
-                s_store = s[top_idx]
+                s_store = s_valid[top_idx]
                 cand_x_hist.append(C_store)
                 cand_s_hist.append(s_store)
-
-                # map chosen index into stored subset
-                j_store = int(np.where(top_idx == j_full)[0][0]) if j_full in top_idx else int(np.argmax(s_store))
+                w = np.where(top_idx == j_full)[0]
+                j_store = int(w[0]) if len(w) else int(np.argmax(s_store))
                 picked_idx.append(j_store)
             else:
                 cand_x_hist.append(C)
-                cand_s_hist.append(s)
+                cand_s_hist.append(s_valid)
                 picked_idx.append(j_full)
 
-            # greedy step
             current_x = C[j_full].copy()
             path.append(current_x.copy())
 
